@@ -1,0 +1,32 @@
+BrownDev13
+Project URL=https://qollommqvatvtqhikchy.supabase.co
+mot de passe=brownLemessi13@
+API Key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvbGxvbW1xdmF0dnRxaGlrY2h5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwMzI3NzcsImV4cCI6MjA1NjYwODc3N30.SxfjHW9iYI1FcLZd8yjF9IdxBrmABzyZdk6FRrLLPHA
+
+Java:
+
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = 'https://qollommqvatvtqhikchy.supabase.co'
+const supabaseKey = process.env.SUPABASE_KEY
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+Project name=Bingoo
+Project ID=qollommqvatvtqhikchy
+Anon public=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvbGxvbW1xdmF0dnRxaGlrY2h5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwMzI3NzcsImV4cCI6MjA1NjYwODc3N30.SxfjHW9iYI1FcLZd8yjF9IdxBrmABzyZdk6FRrLLPHA
+
+service_role=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvbGxvbW1xdmF0dnRxaGlrY2h5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTAzMjc3NywiZXhwIjoyMDU2NjA4Nzc3fQ.1QpM5uby2cmj9E1g33R4WM_x4dOytJ1H2sx68ehGWgs
+
+Jwt Settings=1P/4r7iuVhF4eP/qJSGYwXe6lq53hisUxEPP6MmYVbR6QEuaauHH4XO17GZxa7xXRG16NAbFTgPmyHQmplSUMQ==
+
+Endpoint=https://qollommqvatvtqhikchy.supabase.co/storage/v1/s3
+Organization name=wzfdfrwarppjvibvfdsp
+
+Direct connection:
+postgresql://postgres:[brownLemessi13@]@db.qollommqvatvtqhikchy.supabase.co:5432/postgres
+
+Transaction pooler:
+postgresql://postgres.qollommqvatvtqhikchy:[brownLemessi13@]@aws-0-us-west-1.pooler.supabase.com:6543/postgres
+
+Session pooler:
+postgresql://postgres.qollommqvatvtqhikchy:[brownLemessi13@]@aws-0-us-west-1.pooler.supabase.com:5432/postgres

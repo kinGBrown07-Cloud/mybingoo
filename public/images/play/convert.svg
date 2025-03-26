@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#FEF3C7"/>
+  <circle cx="120" cy="150" r="50" fill="#DC2626"/>
+  <text x="120" y="165" font-family="Arial" font-size="24" fill="#FCD34D" text-anchor="middle">500</text>
+  <text x="120" y="185" font-family="Arial" font-size="16" fill="#FCD34D" text-anchor="middle">FCFA</text>
+  <path d="M180 150h40" stroke="#991B1B" stroke-width="8"/>
+  <path d="M210 130l20 20-20 20" stroke="#991B1B" stroke-width="8" fill="none"/>
+  <circle cx="280" cy="150" r="50" fill="#DC2626"/>
+  <text x="280" y="165" font-family="Arial" font-size="24" fill="#FCD34D" text-anchor="middle">3</text>
+  <text x="280" y="185" font-family="Arial" font-size="16" fill="#FCD34D" text-anchor="middle">POINTS</text>
+</svg>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#FEF3C7"/>
+  <path d="M100 50h200v200h-200z" fill="#DC2626" stroke="#991B1B" stroke-width="4"/>
+  <path d="M120 80h160v40h-160z" fill="#FCD34D"/>
+  <text x="200" y="105" font-family="Arial" font-size="20" fill="#991B1B" text-anchor="middle">TICKET BINGOO</text>
+  <text x="200" y="160" font-family="Arial" font-size="40" fill="#FCD34D" text-anchor="middle">3</text>
+  <text x="200" y="200" font-family="Arial" font-size="16" fill="#FCD34D" text-anchor="middle">POINTS</text>
+</svg>

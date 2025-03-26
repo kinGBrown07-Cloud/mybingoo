@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#FEF3C7"/>
+  <circle cx="200" cy="150" r="80" fill="#DC2626"/>
+  <path d="M200 90l24 48 52 8-38 36 10 52-48-24-48 24 10-52-38-36 52-8z" fill="#FCD34D"/>
+  <text x="200" y="220" font-family="Arial" font-size="24" fill="#991B1B" text-anchor="middle">BONUS x2</text>
+</svg>

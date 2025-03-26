@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#FEF3C7"/>
+  <circle cx="200" cy="100" r="40" fill="#DC2626"/>
+  <circle cx="120" cy="180" r="30" fill="#DC2626"/>
+  <circle cx="280" cy="180" r="30" fill="#DC2626"/>
+  <path d="M200 60l24 48 52 8-38 36 10 52-48-24-48 24 10-52-38-36 52-8z" fill="#FCD34D" transform="translate(0,40) scale(0.5)"/>
+  <path d="M200 60l24 48 52 8-38 36 10 52-48-24-48 24 10-52-38-36 52-8z" fill="#FCD34D" transform="translate(-80,120) scale(0.4)"/>
+  <path d="M200 60l24 48 52 8-38 36 10 52-48-24-48 24 10-52-38-36 52-8z" fill="#FCD34D" transform="translate(80,120) scale(0.4)"/>
+  <text x="200" y="270" font-family="Arial" font-size="24" fill="#991B1B" text-anchor="middle">NOS GAGNANTS</text>
+</svg>

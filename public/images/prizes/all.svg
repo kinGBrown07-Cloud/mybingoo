@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#FEF3C7"/>
+  <rect x="50" y="70" width="100" height="160" rx="10" fill="#DC2626"/>
+  <rect x="170" y="100" width="80" height="130" rx="10" fill="#DC2626"/>
+  <rect x="270" y="130" width="60" height="100" rx="10" fill="#DC2626"/>
+  <path d="M100 50l-20 40h40z" fill="#FCD34D"/>
+  <path d="M210 80l-20 40h40z" fill="#FCD34D"/>
+  <path d="M300 110l-20 40h40z" fill="#FCD34D"/>
+  <text x="200" y="270" font-family="Arial" font-size="24" fill="#991B1B" text-anchor="middle">LOTS DISPONIBLES</text>
+</svg>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { PayPalButtons } from '@paypal/react-paypal-js';
 import { POINTS_RATES, REGION_CURRENCIES, REGIONS } from '@/config/regions';
 import { motion } from 'framer-motion';
@@ -13,19 +13,51 @@ interface PaymentFormProps {
 }
 
 export default function PaymentForm({ onSuccess, onError }: PaymentFormProps) {
-  const { data: session } = useSession();
+  const supabase = createClientComponentClient();
+  const [session, setSession] = useState<any>(null);
   const [amount, setAmount] = useState<number>(2);
   const [userRegion, setUserRegion] = useState(REGIONS.EUROPE);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setIsLoading(false);
+    };
+
+    getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase.auth]);
 
   useEffect(() => {
     // Récupérer la région de l'utilisateur depuis la base de données
     const fetchUserRegion = async () => {
-      if (session?.user?.regionId) {
+      if (session?.user?.id) {
         try {
-          const response = await fetch(`/api/users/region/${session.user.regionId}`);
-          if (response.ok) {
-            const data = await response.json();
-            setUserRegion(data.name || REGIONS.EUROPE);
+          const { data, error } = await supabase
+            .from('users')
+            .select('regionId')
+            .eq('id', session.user.id)
+            .single();
+
+          if (error) throw error;
+          
+          if (data?.regionId) {
+            const { data: regionData } = await supabase
+              .from('regions')
+              .select('name')
+              .eq('id', data.regionId)
+              .single();
+            
+            if (regionData) {
+              setUserRegion(regionData.name || REGIONS.EUROPE);
+            }
           }
         } catch (error) {
           console.error('Erreur lors de la récupération de la région:', error);
@@ -33,8 +65,10 @@ export default function PaymentForm({ onSuccess, onError }: PaymentFormProps) {
       }
     };
 
-    fetchUserRegion();
-  }, [session?.user?.regionId]);
+    if (!isLoading) {
+      fetchUserRegion();
+    }
+  }, [session?.user?.id, isLoading, supabase]);
 
   const currency = REGION_CURRENCIES[userRegion];
   const pointsRate = POINTS_RATES[userRegion];

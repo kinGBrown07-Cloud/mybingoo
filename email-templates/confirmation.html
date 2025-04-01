@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmez votre inscription à Mybingoo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #fff5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 48px;
+            color: #ed8936;
+        }
+        h2 {
+            font-family: 'Poppins', sans-serif;
+            color: #dd6b20;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        p {
+            color: #555555;
+            font-size: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .button {
+            font-family: 'Inter', sans-serif;
+            display: inline-block;
+            background: linear-gradient(to right, #ed8936, #dd6b20);
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .button:hover {
+            background: linear-gradient(to right, #dd6b20, #c05621);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+        }
+        .cta-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .footer {
+            text-align: center;
+            color: #888888;
+            font-size: 14px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eeeeee;
+        }
+        .highlight {
+            color: #ed8936;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <i class="fas fa-dice-d20"></i>
+        </div>
+        <h2>Bienvenue sur Mybingoo !</h2>
+        <p>Merci de vous être inscrit. Pour commencer à jouer et gagner des récompenses, veuillez confirmer votre adresse email.</p>
+        <div class="cta-container">
+            <a href="{{ .SiteURL }}/auth/callback?code={{ .Token }}&type=email" class="button">
+                <i class="fas fa-check-circle"></i> Confirmer mon compte
+            </a>
+        </div>
+        <p style="font-size: 14px; color: #666666;">Si le bouton ne fonctionne pas, vous pouvez copier et coller ce lien dans votre navigateur :</p>
+        <p style="font-size: 12px; color: #999999;">{{ .SiteURL }}/auth/callback?code={{ .Token }}&type=email</p>
+        <div class="footer">
+            <p><i class="fas fa-shield-alt"></i> Cet email a été envoyé à <span class="highlight">{{ .Email }}</span></p>
+            <p> 2025 Mybingoo - Tous droits réservés</p>
+        </div>
+    </div>
+</body>
+</html>

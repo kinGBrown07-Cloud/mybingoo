@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/providers/SessionProvider';
 import { StarIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 interface Prize {
   id: string;
@@ -15,10 +16,24 @@ interface Prize {
   available: boolean;
 }
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 export default function CurrentPrizesPage() {
-  const { data: session } = useSession();
+  const { user, loading } = useSession();
+  const router = useRouter();
   const [featuredPrize, setFeaturedPrize] = useState<Prize | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    router.push('/auth/login');
+    return null;
+  }
 
   useEffect(() => {
     const fetchFeaturedPrize = async () => {
@@ -80,4 +95,4 @@ export default function CurrentPrizesPage() {
       </div>
     </div>
   );
-} 
+}

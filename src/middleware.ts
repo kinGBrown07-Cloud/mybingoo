@@ -2,11 +2,29 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req, res });
+// Rediriger les anciennes routes vers les nouvelles
+function redirectOldRoutes(req: NextRequest) {
+  const redirects: Record<string, string> = {
+    '/login': '/auth/login',
+    '/register': '/auth/register'
+  };
 
-  // Vérifier et rafraîchir la session
+  const path = req.nextUrl.pathname;
+  if (path in redirects) {
+    return NextResponse.redirect(new URL(redirects[path], req.url));
+  }
+  return null;
+}
+
+export async function middleware(request: NextRequest) {
+  // Vérifier d'abord les redirections
+  const redirect = redirectOldRoutes(request);
+  if (redirect) return redirect;
+
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req: request, res });
+
+  // Rafraîchir la session si elle existe
   const { data: { session } } = await supabase.auth.getSession();
 
   // En-têtes de sécurité
@@ -15,54 +33,47 @@ export async function middleware(req: NextRequest) {
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   res.headers.set('X-XSS-Protection', '1; mode=block');
+  
+  // Force dynamic rendering for authenticated routes
+  res.headers.set('Cache-Control', 'no-store, max-age=0');
 
-  // Routes publiques
-  const publicRoutes = [
-    '/',
-    '/auth/login',
-    '/auth/register',
-    '/auth/callback',
-    '/api/auth/register',
-  ];
-
-  // Vérifier si c'est une ressource statique (images, vidéos)
-  const isStaticResource = req.nextUrl.pathname.startsWith('/images/') || 
-                         req.nextUrl.pathname.startsWith('/videos/');
-
-  const isPublicRoute = publicRoutes.some(route => 
-    req.nextUrl.pathname === route || 
-    req.nextUrl.pathname.startsWith('/api/auth/')
-  );
-
-  if (isPublicRoute || isStaticResource) {
-    return res;
-  }
-
-  // Vérifier l'authentification pour les routes protégées
-  if (!session) {
-    const redirectUrl = req.nextUrl.clone();
-    redirectUrl.pathname = '/auth/login';
-    redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname);
+  // Vérifier si l'utilisateur est authentifié pour les routes protégées
+  if (!session && (
+    request.nextUrl.pathname.startsWith('/admin') ||
+    request.nextUrl.pathname.startsWith('/dashboard') ||
+    request.nextUrl.pathname.startsWith('/prizes') ||
+    request.nextUrl.pathname.startsWith('/tournaments') ||
+    request.nextUrl.pathname.startsWith('/play')
+  )) {
+    const redirectUrl = new URL('/auth/login', request.url);
+    redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Vérifier les permissions admin
-  const isAdminRoute = req.nextUrl.pathname.startsWith('/admin');
-  if (isAdminRoute) {
-    const { data: { user } } = await supabase.auth.getUser();
-    const isAdmin = user?.user_metadata?.role === 'ADMIN';
-    
-    if (!isAdmin) {
-      return NextResponse.redirect(new URL('/', req.url));
+  // Vérifier si l'utilisateur est admin pour les routes admin
+  if (session && request.nextUrl.pathname.startsWith('/admin')) {
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('supabaseId', session.user.id)
+      .single();
+
+    if (!userData || userData.role !== 'ADMIN') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }
 
   return res;
 }
 
-// Configuration des routes à protéger
+// Configuration des routes qui nécessitent le middleware
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|images/|videos/).*)',
-  ],
+    '/admin/:path*',
+    '/dashboard/:path*',
+    '/prizes/:path*',
+    '/tournaments/:path*',
+    '/play/:path*',
+    '/((?!api/auth|auth|_next|images|videos|favicon.ico|sitemap.xml).*)',
+  ]
 };

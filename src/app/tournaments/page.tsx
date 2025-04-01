@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import TournamentCard from '@/components/tournaments/TournamentCard';
 import { useDataCache } from '@/hooks/useDataCache';
 import { toast } from 'react-hot-toast';
+import { useSession } from '@/providers/SessionProvider';
 
 interface Tournament {
   id: string;
@@ -19,12 +19,16 @@ interface Tournament {
   entryFee: number;
 }
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 export default function TournamentsPage() {
-  const { data: session } = useSession();
+  const { user, loading } = useSession();
   const router = useRouter();
   const [userPoints, setUserPoints] = useState(0);
 
-  const { data: tournaments, loading, refetch } = useDataCache<Tournament[]>(
+  const { data: tournaments, loading: tournamentsLoading, refetch } = useDataCache<Tournament[]>(
     async () => {
       const response = await fetch('/api/tournaments');
       return response.json();
@@ -33,10 +37,10 @@ export default function TournamentsPage() {
   );
 
   useEffect(() => {
-    if (session?.user?.email) {
+    if (user?.email) {
       fetchUserPoints();
     }
-  }, [session]);
+  }, [user]);
 
   const fetchUserPoints = async () => {
     try {
@@ -68,25 +72,13 @@ export default function TournamentsPage() {
     }
   };
 
-  if (!session) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 pt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-white">Accès restreint</h2>
-            <p className="mt-4 text-lg text-gray-400">
-              Connectez-vous pour accéder aux tournois
-            </p>
-            <button
-              onClick={() => router.push('/auth/login')}
-              className="mt-6 px-6 py-3 bg-yellow-500 text-gray-900 rounded-lg font-medium hover:bg-yellow-400 transition-colors"
-            >
-              Se connecter
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    router.push('/auth/login');
+    return null;
   }
 
   return (
@@ -105,7 +97,7 @@ export default function TournamentsPage() {
           </div>
         </div>
 
-        {loading ? (
+        {tournamentsLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(3)].map((_, i) => (
               <div

@@ -1,19 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Image from 'next/image';
 import BuyPointsModal from './BuyPointsModal';
+import GameBoard from './GameBoard';
 import { GiftIcon, SparklesIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import Link from 'next/link';
+import { toast } from 'react-hot-toast';
 
 interface Prize {
   id: string;
   name: string;
   description: string;
-  imageUrl: string; // Remplacez 'image' par 'imageUrl'
+  imageUrl: string;
   pointValue: number;
-  category: string;
+  category: 'FOOD' | 'CLOTHING' | 'SUPER';
   available: boolean;
   createdAt: string;
   updatedAt: string;
@@ -22,214 +23,225 @@ interface Prize {
 const GAME_COST = 1; // Coût uniforme de 1 point par carte
 
 export default function TombolaGame() {
+  const supabase = createClientComponentClient();
   const [selectedPrize, setSelectedPrize] = useState<Prize | null>(null);
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [userPoints, setUserPoints] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { data: session } = useSession();
+  const [gameConfig, setGameConfig] = useState({
+    maxTries: 3,
+    gameType: 'FOOD' as Prize['category']
+  });
 
   useEffect(() => {
     fetchPrizes();
-    if (session) {
-      fetchUserPoints();
-    }
-  }, [session]);
-
-  const fetchPrizes = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/games');
-      const data = await response.json();
-      setPrizes(data);
-    } catch (error) {
-      console.error('Erreur lors du chargement des lots:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    fetchUserPoints();
+  }, []);
 
   const fetchUserPoints = async () => {
     try {
-      const response = await fetch('/api/users/points');
-      const data = await response.json();
-      setUserPoints(data.points);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('points')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (userData) {
+          setUserPoints(userData.points || 0);
+        }
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des points:', error);
     }
   };
 
-  const handlePrizeSelect = (prize: Prize) => {
-    setSelectedPrize(prize);
+  const fetchPrizes = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('prizes')
+        .select('*')
+        .eq('category', gameConfig.gameType)
+        .eq('available', true);
+
+      if (error) throw error;
+      setPrizes(data || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement des lots:', error);
+      toast.error('Erreur lors du chargement des lots');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handlePlay = async () => {
-    if (!selectedPrize || !session) return;
-
-    if (userPoints < GAME_COST) {
-      setIsModalOpen(true);
-      return;
-    }
-
-    setIsPlaying(true);
+  const handleGameEnd = async (won: boolean, prize?: Prize) => {
+    if (!prize) return;
 
     try {
-      const response = await fetch('/api/games/play', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prizeId: selectedPrize.id,
-        }),
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        toast.error('Vous devez être connecté pour jouer');
+        return;
+      }
+
+      if (won) {
+        // Mettre à jour les points de l'utilisateur avec les points gagnés
+        const { error: pointsError } = await supabase.rpc('add_points', {
+          p_user_id: session.user.id,
+          p_points: prize.pointValue
+        });
+
+        if (pointsError) throw pointsError;
+
+        // Enregistrer la victoire
+        const { error: winError } = await supabase
+          .from('game_wins')
+          .insert({
+            userId: session.user.id,
+            prizeId: prize.id,
+            category: gameConfig.gameType,
+            pointsWon: prize.pointValue
+          });
+
+        if (winError) throw winError;
+
+        toast.success(`Félicitations ! Vous avez gagné ${prize.pointValue} points !`);
+        fetchUserPoints(); // Rafraîchir les points
+      }
+
+      setIsPlaying(false);
+    } catch (error) {
+      console.error('Erreur lors de la fin du jeu:', error);
+      toast.error('Une erreur est survenue');
+    }
+  };
+
+  const startGame = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        toast.error('Vous devez être connecté pour jouer');
+        return;
+      }
+
+      if (userPoints < GAME_COST) {
+        setIsModalOpen(true);
+        return;
+      }
+
+      // Déduire le coût du jeu
+      const { error: pointsError } = await supabase.rpc('subtract_points', {
+        p_user_id: session.user.id,
+        p_points: GAME_COST
       });
 
-      const result = await response.json();
+      if (pointsError) throw pointsError;
 
-      // Animation de tirage
-      setTimeout(() => {
-        setIsPlaying(false);
-        if (result.won) {
-          alert('🎉 Félicitations ! Vous avez gagné ' + selectedPrize.name + ' !');
-        } else {
-          alert('Pas de chance cette fois-ci. Réessayez !');
-        }
-        fetchUserPoints();
-        fetchPrizes();
-      }, 3000);
-
+      setIsPlaying(true);
+      fetchUserPoints(); // Rafraîchir les points
     } catch (error) {
-      console.error('Erreur lors du tirage:', error);
-      setIsPlaying(false);
+      console.error('Erreur lors du démarrage du jeu:', error);
+      toast.error('Une erreur est survenue');
     }
+  };
+
+  const handleCategoryChange = (category: Prize['category']) => {
+    setGameConfig(prev => ({ ...prev, gameType: category }));
+    fetchPrizes();
   };
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <ArrowPathIcon className="h-8 w-8 text-indigo-600 animate-spin" />
+      <div className="flex items-center justify-center min-h-screen">
+        <ArrowPathIcon className="w-8 h-8 text-yellow-500 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {/* Points Display */}
-      {session && (
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8 flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Vos points</h2>
-            <p className="text-3xl font-bold text-indigo-600">{userPoints} points</p>
+    <div className="container mx-auto px-4 py-8">
+      {!isPlaying ? (
+        <div className="space-y-8">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-white">Bingoo Tombola</h1>
+            <div className="flex items-center space-x-2">
+              <SparklesIcon className="w-5 h-5 text-yellow-500" />
+              <span className="text-lg font-medium text-white">{userPoints} points</span>
+            </div>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button
+              onClick={() => handleCategoryChange('FOOD')}
+              className={`p-4 rounded-xl border ${
+                gameConfig.gameType === 'FOOD'
+                  ? 'bg-yellow-500 border-yellow-600 text-gray-900'
+                  : 'bg-gray-800 border-gray-700 text-white hover:bg-gray-700'
+              }`}
+            >
+              <GiftIcon className="w-6 h-6 mx-auto mb-2" />
+              <div className="font-medium">Kits Alimentaires</div>
+            </button>
+
+            <button
+              onClick={() => handleCategoryChange('CLOTHING')}
+              className={`p-4 rounded-xl border ${
+                gameConfig.gameType === 'CLOTHING'
+                  ? 'bg-yellow-500 border-yellow-600 text-gray-900'
+                  : 'bg-gray-800 border-gray-700 text-white hover:bg-gray-700'
+              }`}
+            >
+              <GiftIcon className="w-6 h-6 mx-auto mb-2" />
+              <div className="font-medium">Habillements</div>
+            </button>
+
+            <button
+              onClick={() => handleCategoryChange('SUPER')}
+              className={`p-4 rounded-xl border ${
+                gameConfig.gameType === 'SUPER'
+                  ? 'bg-yellow-500 border-yellow-600 text-gray-900'
+                  : 'bg-gray-800 border-gray-700 text-white hover:bg-gray-700'
+              }`}
+            >
+              <GiftIcon className="w-6 h-6 mx-auto mb-2" />
+              <div className="font-medium">Super Lots</div>
+            </button>
+          </div>
+
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <h2 className="text-xl font-semibold text-white mb-4">Comment jouer</h2>
+            <ul className="space-y-2 text-gray-300">
+              <li>• Chaque partie coûte {GAME_COST} point</li>
+              <li>• Retournez les cartes pour trouver des paires identiques</li>
+              <li>• Trouvez toutes les paires avant d'épuiser vos essais</li>
+              <li>• Gagnez des points selon la valeur du lot</li>
+            </ul>
+          </div>
+
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+            onClick={startGame}
+            disabled={isLoading}
+            className="w-full bg-yellow-500 text-gray-900 font-medium py-3 rounded-xl hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Acheter des points
+            Jouer ({GAME_COST} point)
           </button>
         </div>
+      ) : (
+        <GameBoard
+          config={gameConfig}
+          prizes={prizes}
+          onGameEnd={handleGameEnd}
+        />
       )}
 
-      {/* Prize Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-        {prizes.map((prize) => (
-          <div
-            key={prize.id}
-            className={`bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer transition-all duration-200 transform hover:scale-105 ${
-              selectedPrize?.id === prize.id ? 'ring-2 ring-indigo-500' : ''
-            }`}
-            onClick={() => handlePrizeSelect(prize)}
-          >
-            <div className="relative h-48">
-              <Image
-                src={prize.imageUrl} // Utilisez 'imageUrl' ici
-                alt={prize.name}
-                fill
-                className="object-cover"
-              />
-              <div className="absolute top-2 right-2 bg-white rounded-full px-3 py-1 text-sm font-medium text-indigo-600">
-                {GAME_COST} points
-              </div>
-            </div>
-            <div className="p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{prize.name}</h3>
-              <p className="text-sm text-gray-600 mb-4">{prize.description}</p>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">
-                  {prize.available ? 'Disponible' : 'Non disponible'}
-                </span>
-                <span className="text-gray-500">
-                  Catégorie : {prize.category}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Selected Prize Section */}
-      {selectedPrize && (
-        <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-          <div className="max-w-2xl mx-auto">
-            <SparklesIcon className="h-12 w-12 text-indigo-600 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              Lot sélectionné : {selectedPrize.name}
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Coût : {GAME_COST} points
-            </p>
-            {session ? (
-              <button
-                onClick={handlePlay}
-                disabled={isPlaying || userPoints < GAME_COST}
-                className={`inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white ${
-                  isPlaying
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : userPoints < GAME_COST
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-indigo-600 hover:bg-indigo-700'
-                }`}
-              >
-                {isPlaying ? (
-                  <>
-                    <ArrowPathIcon className="animate-spin h-5 w-5 mr-2" />
-                    Tirage en cours...
-                  </>
-                ) : userPoints < GAME_COST ? (
-                  'Points insuffisants'
-                ) : (
-                  <>
-                    <GiftIcon className="h-5 w-5 mr-2" />
-                    Tenter sa chance
-                  </>
-                )}
-              </button>
-            ) : (
-              <div className="space-y-4">
-                <p className="text-gray-500">
-                  Connectez-vous pour participer au tirage
-                </p>
-                <Link
-                  href="/auth/login"
-                  className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-                >
-                  Se connecter
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Buy Points Modal */}
       <BuyPointsModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={() => {
-          setIsModalOpen(false);
-          fetchUserPoints();
-        }}
+        onSuccess={fetchUserPoints}
       />
     </div>
   );

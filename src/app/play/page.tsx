@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import { useSession } from 'next-auth/react';
+import { useSupabase } from '@/providers/SupabaseProvider';
 import { useRouter } from 'next/navigation';
 
 interface Prize {
@@ -17,7 +17,7 @@ interface Prize {
 
 
 export default function PlayPage() {
-  const { data: session, status } = useSession();
+  const { user } = useSupabase();
   const router = useRouter();
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,8 +28,8 @@ export default function PlayPage() {
   const [showBuyPoints, setShowBuyPoints] = useState(false);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
+    if (!user) {
+      router.push('/auth/login');
       return;
     }
 
@@ -53,7 +53,7 @@ export default function PlayPage() {
     };
 
     fetchData();
-  }, [status, router]);
+  }, [user, router]);
 
   const handlePlay = async (prize: Prize) => {
     if (points < prize.value) {

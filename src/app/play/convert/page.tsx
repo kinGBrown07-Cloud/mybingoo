@@ -1,17 +1,37 @@
 'use client';
 
 import { useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/providers/SessionProvider';
 import { CurrencyEuroIcon } from '@heroicons/react/24/outline';
 
-export default function ConvertPointsPage() {
-  const { data: session } = useSession();
+export default function ConvertPage() {
+  const { user, loading } = useSession();
   const [points, setPoints] = useState(3);
   const [isLoading, setIsLoading] = useState(false);
 
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    // router.push('/auth/login');
+    // return null;
+    return (
+      <div className="text-center">
+        <p className="text-black mb-4">
+          Connectez-vous pour convertir vos points
+        </p>
+        <a
+          href="/auth/signin"
+          className="text-green-600 hover:text-green-700 font-semibold"
+        >
+          Se connecter
+        </a>
+      </div>
+    );
+  }
+
   const handleConvert = async () => {
-    if (!session) return;
-    
     setIsLoading(true);
     try {
       // TODO: Implémenter la logique de conversion des points
@@ -79,34 +99,20 @@ export default function ConvertPointsPage() {
               </div>
             </div>
 
-            {session ? (
-              <button
-                onClick={handleConvert}
-                disabled={isLoading}
-                className={`w-full py-3 px-4 rounded-md text-white font-semibold ${
-                  isLoading
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700'
-                }`}
-              >
-                {isLoading ? 'Traitement en cours...' : 'Convertir les points'}
-              </button>
-            ) : (
-              <div className="text-center">
-                <p className="text-black mb-4">
-                  Connectez-vous pour convertir vos points
-                </p>
-                <a
-                  href="/auth/signin"
-                  className="text-green-600 hover:text-green-700 font-semibold"
-                >
-                  Se connecter
-                </a>
-              </div>
-            )}
+            <button
+              onClick={handleConvert}
+              disabled={isLoading}
+              className={`w-full py-3 px-4 rounded-md text-white font-semibold ${
+                isLoading
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-green-600 hover:bg-green-700'
+              }`}
+            >
+              {isLoading ? 'Traitement en cours...' : 'Convertir les points'}
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}

@@ -4,6 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import PlaySuperLotButton from '@/components/PlaySuperLotButton';
 import {
   PlayIcon,
   GiftIcon,
@@ -28,7 +29,7 @@ const stats = [
   { id: 1, name: 'Points par partie', value: '2 pts', icon: CurrencyDollarIcon },
   { id: 2, name: 'Valeur du point', value: '300 FCFA', icon: CurrencyEuroIcon },
   { id: 3, name: 'Lots disponibles', value: '100+', icon: GiftIcon },
-  { id: 4, name: 'Taux de gain', value: '30%', icon: TrophyIcon },
+  { id: 4, name: 'Gagnants par mois', value: '50+', icon: TrophyIcon },
 ];
 
 export default function Home() {
@@ -245,13 +246,7 @@ export default function Home() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Link
-                      href="/play"
-                      className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-yellow-400 text-red-900 font-medium hover:bg-yellow-300 transition-colors w-full sm:w-auto"
-                    >
-                      Jouer maintenant
-                      <ArrowRightIcon className="h-5 w-5 ml-2" />
-                    </Link>
+                    <PlaySuperLotButton />
                   </motion.div>
                   <motion.div
                     whileHover={{ scale: 1.05 }}
@@ -549,56 +544,62 @@ export default function Home() {
                     transition={{ delay: index * 0.2 }}
                     className="group relative w-full px-6"
                   >
-                    <div className="relative w-full h-96 -mt-12 mb-8 overflow-visible">
-                      <Image
-                        src={item.image}
-                        alt={item.title}
-                        className="w-full h-full object-cover rounded-xl shadow-2xl transform group-hover:scale-105 transition-transform duration-500"
-                        width={600}
-                        height={400}
-                        style={{
-                          marginLeft: '-10%',
-                          width: '120%',
-                          maxWidth: '120%'
-                        }}
-                      />
-                      <div className={`absolute top-4 right-0 m-2 ${
-                        item.color === 'emerald' ? 'bg-emerald-500' :
-                        item.color === 'red' ? 'bg-red-500' :
-                        'bg-yellow-400'
-                      } rounded-full p-1 shadow-lg`}>
-                        <StarIcon className="h-6 w-6 text-white" />
+                    <Link href={
+                      item.category === 'Kit Alimentaire' ? '/play/afrique-noire' :
+                      item.category === 'Habillement' ? '/play/afrique-blanche' :
+                      '/play/europe'
+                    } className="block">
+                      <div className="relative w-full h-96 -mt-12 mb-8 overflow-visible">
+                        <Image
+                          src={item.image}
+                          alt={item.title}
+                          className="w-full h-full object-cover rounded-xl shadow-2xl transform group-hover:scale-105 transition-transform duration-500"
+                          width={600}
+                          height={400}
+                          style={{
+                            marginLeft: '-10%',
+                            width: '120%',
+                            maxWidth: '120%'
+                          }}
+                        />
+                        <div className={`absolute top-4 right-0 m-2 ${
+                          item.color === 'emerald' ? 'bg-emerald-500' :
+                          item.color === 'red' ? 'bg-red-500' :
+                          'bg-yellow-400'
+                        } rounded-full p-1 shadow-lg`}>
+                          <StarIcon className="h-6 w-6 text-white" />
+                        </div>
                       </div>
-                    </div>
-                    <div className={`bg-gradient-to-br from-white to-gray-50 p-8 rounded-xl shadow-lg border ${
-                      item.color === 'emerald' ? 'border-emerald-100 hover:border-emerald-300' :
-                      item.color === 'red' ? 'border-red-100 hover:border-red-300' :
-                      'border-yellow-100 hover:border-yellow-300'
-                    } relative w-[120%] -ml-[10%]`}>
-                      <div className={`absolute -top-4 left-8 ${
-                        item.color === 'emerald' ? 'bg-gradient-to-r from-emerald-600 to-emerald-500' :
-                        item.color === 'red' ? 'bg-gradient-to-r from-red-600 to-red-500' :
-                        'bg-gradient-to-r from-yellow-500 to-yellow-400'
-                      } text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg`}>
-                        {item.category}
+                      <div className={`bg-gradient-to-br from-white to-gray-50 p-8 rounded-xl shadow-lg border ${
+                        item.color === 'emerald' ? 'border-emerald-100 hover:border-emerald-300' :
+                        item.color === 'red' ? 'border-red-100 hover:border-red-300' :
+                        'border-yellow-100 hover:border-yellow-300'
+                      } relative w-[120%] -ml-[10%]`}>
+                        <div className={`absolute -top-4 left-8 ${
+                          item.color === 'emerald' ? 'bg-gradient-to-r from-emerald-600 to-emerald-500' :
+                          item.color === 'red' ? 'bg-gradient-to-r from-red-600 to-red-500' :
+                          'bg-gradient-to-r from-yellow-500 to-yellow-400'
+                        } text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg`}>
+                          {item.category}
+                        </div>
+                        <div className="space-y-4">
+                          <h3 className="text-2xl font-bold text-gray-900">{item.title}</h3>
+                          <div className={`h-px bg-gradient-to-r ${
+                            item.color === 'emerald' ? 'from-emerald-200' :
+                            item.color === 'red' ? 'from-red-200' :
+                            'from-yellow-200'
+                          } to-transparent mb-6`}></div>
+                          <p className="text-base text-gray-600 mt-2">
+                            {item.description}
+                          </p>
+                          <div className={`absolute top-0 right-0 w-24 h-24 ${
+                            item.color === 'emerald' ? 'bg-emerald-100' :
+                            item.color === 'red' ? 'bg-red-100' :
+                            'bg-yellow-100'
+                          } opacity-20 rounded-bl-full -z-10`}></div>
+                        </div>
                       </div>
-                      <div className="space-y-4">
-                        <h3 className="text-2xl font-bold text-gray-900">{item.title}</h3>
-                        <div className={`h-px bg-gradient-to-r ${
-                          item.color === 'emerald' ? 'from-emerald-200' :
-                          item.color === 'red' ? 'from-red-200' :
-                          'from-yellow-200'
-                        } to-transparent mb-6`}></div>
-                        <p className="text-base text-gray-600 mt-2">
-                          {item.description}
-                        </p>
-                        <div className={`absolute top-0 right-0 w-24 h-24 ${
-                          item.color === 'emerald' ? 'bg-emerald-100' :
-                          item.color === 'red' ? 'bg-red-100' :
-                          'bg-yellow-100'
-                        } opacity-20 rounded-bl-full -z-10`}></div>
-                      </div>
-                    </div>
+                    </Link>
                   </motion.div>
                 ))}
               </motion.div>
@@ -615,7 +616,7 @@ export default function Home() {
                   className="inline-flex items-center px-6 py-3 border border-transparent text-lg font-medium rounded-lg text-white bg-gradient-to-r from-emerald-600 via-red-500 to-yellow-500 hover:from-emerald-500 hover:via-red-400 hover:to-yellow-400 transition-all duration-300 shadow-lg shadow-yellow-400/20"
                 >
                   Voir tous les lots
-                  <ArrowRightIcon className="h-6 w-6 ml-2" />
+                  <ArrowRightIcon className="ml-2 h-5 w-5" />
                 </Link>
               </motion.div>
             </div>
@@ -657,65 +658,69 @@ export default function Home() {
                       icon: UserGroupIcon,
                       title: "Inscrivez-vous",
                       description: "Créez votre compte en quelques clics et obtenez vos premiers points gratuits.",
-                      color: "emerald"
+                      color: "emerald",
+                      href: "/register"
                     },
                     {
                       icon: CurrencyEuroIcon,
                       title: "Achetez des tickets",
                       description: "Convertissez vos points en tickets de tombola pour participer aux tirages.",
-                      color: "red"
+                      color: "red",
+                      href: "/play/buy"
                     },
                     {
                       icon: TrophyIcon,
                       title: "Gagnez des lots",
                       description: "Participez aux tirages et gagnez des lots exceptionnels !",
-                      color: "yellow"
+                      color: "yellow",
+                      href: "/play"
                     }
                   ].map((item, index) => (
-                    <motion.div
-                      key={item.title}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: index * 0.2 }}
-                      className={`relative bg-gradient-to-br from-white to-gray-50 p-8 rounded-xl shadow-lg border ${
-                        item.color === 'emerald' ? 'border-emerald-100 hover:border-emerald-300' :
-                        item.color === 'red' ? 'border-red-100 hover:border-red-300' :
-                        'border-yellow-100 hover:border-yellow-300'
-                      } transition-colors duration-300`}
-                    >
-                      <div className="flex items-center mb-6">
-                        <div className="flex-shrink-0">
-                          <div className={`flex items-center justify-center h-14 w-14 rounded-xl ${
-                            item.color === 'emerald' ? 'bg-gradient-to-r from-emerald-600 to-emerald-500' :
-                            item.color === 'red' ? 'bg-gradient-to-r from-red-600 to-red-500' :
-                            'bg-gradient-to-r from-yellow-500 to-yellow-400'
-                          } text-white shadow-lg transform hover:scale-110 transition-transform duration-300`}>
-                            <item.icon className="h-8 w-8" />
+                    <Link href={item.href} key={item.title} className="block h-full">
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: index * 0.2 }}
+                        className={`relative bg-gradient-to-br from-white to-gray-50 p-8 rounded-xl shadow-lg border h-full flex flex-col ${
+                          item.color === 'emerald' ? 'border-emerald-100 hover:border-emerald-300' :
+                          item.color === 'red' ? 'border-red-100 hover:border-red-300' :
+                          'border-yellow-100 hover:border-yellow-300'
+                        } transition-all duration-300 transform hover:scale-105 cursor-pointer`}
+                      >
+                        <div className="flex items-center mb-6">
+                          <div className="flex-shrink-0">
+                            <div className={`flex items-center justify-center h-14 w-14 rounded-xl ${
+                              item.color === 'emerald' ? 'bg-gradient-to-r from-emerald-600 to-emerald-500' :
+                              item.color === 'red' ? 'bg-gradient-to-r from-red-600 to-red-500' :
+                              'bg-gradient-to-r from-yellow-500 to-yellow-400'
+                            } text-white`}>
+                              <item.icon className="h-8 w-8" />
+                            </div>
                           </div>
+                          <h3 className={`ml-4 text-xl font-bold ${
+                            item.color === 'emerald' ? 'text-emerald-900' :
+                            item.color === 'red' ? 'text-red-900' :
+                            'text-yellow-900'
+                          }`}>
+                            {item.title}
+                          </h3>
                         </div>
-                        <h3 className={`ml-4 text-xl font-bold ${
-                          item.color === 'emerald' ? 'text-emerald-900' :
-                          item.color === 'red' ? 'text-red-900' :
-                          'text-yellow-900'
-                        }`}>
-                          {item.title}
-                        </h3>
-                      </div>
-                      <div className={`h-px bg-gradient-to-r ${
-                        item.color === 'emerald' ? 'from-emerald-200' :
-                        item.color === 'red' ? 'from-red-200' :
-                        'from-yellow-200'
-                      } to-transparent mb-6`}></div>
-                      <p className="text-base text-gray-600 mt-2">
-                        {item.description}
-                      </p>
-                      <div className={`absolute top-0 right-0 w-24 h-24 ${
-                        item.color === 'emerald' ? 'bg-emerald-100' :
-                        item.color === 'red' ? 'bg-red-100' :
-                        'bg-yellow-100'
-                      } opacity-20 rounded-bl-full -z-10`}></div>
-                    </motion.div>
+                        <div className={`h-px bg-gradient-to-r ${
+                          item.color === 'emerald' ? 'from-emerald-200' :
+                          item.color === 'red' ? 'from-red-200' :
+                          'from-yellow-200'
+                        } to-transparent mb-6`}></div>
+                        <p className="text-base text-gray-600 mt-2 flex-grow">
+                          {item.description}
+                        </p>
+                        <div className={`absolute top-0 right-0 w-24 h-24 ${
+                          item.color === 'emerald' ? 'bg-emerald-100' :
+                          item.color === 'red' ? 'bg-red-100' :
+                          'bg-yellow-100'
+                        } opacity-20 rounded-bl-full -z-10`}></div>
+                      </motion.div>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -740,12 +745,7 @@ export default function Home() {
                   whileTap={{ scale: 0.95 }}
                   className="inline-flex rounded-md shadow"
                 >
-                  <Link
-                    href="/play"
-                    className="inline-flex items-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-red-600 bg-white hover:bg-red-50 transition-colors"
-                  >
-                    Jouer maintenant
-                  </Link>
+                  <PlaySuperLotButton />
                 </motion.div>
               </div>
             </div>
@@ -787,10 +787,12 @@ export default function Home() {
                         className="object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
-                      <div className="absolute inset-x-0 bottom-0 p-8">
+                      <div className="absolute top-3 left-3">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-400/90 text-red-900 mb-4">
                           🏆 Gagnant du Mois
                         </span>
+                      </div>
+                      <div className="absolute inset-x-0 bottom-0 p-8">
                         <h3 className="text-3xl font-bold text-white mb-4">
                           Marie remporte le scooter électrique !
                         </h3>
@@ -941,13 +943,16 @@ export default function Home() {
                   >
                     <div className="group p-4 rounded-xl bg-gradient-to-br from-emerald-400/10 to-emerald-400/5 backdrop-blur-sm border border-emerald-400/20 hover:border-emerald-400/40 transition-colors">
                       <div className="flex items-center space-x-4">
-                        <div className="flex-shrink-0 w-16 h-16 relative rounded-lg overflow-hidden">
-                          <Image
-                            src="/images/winner3.jpg"
-                            alt="Témoignage"
-                            fill
-                            className="object-cover"
-                          />
+                        <div className="flex-shrink-0">
+                          <div className="flex items-center justify-center h-14 w-14 rounded-xl bg-emerald-500/20">
+                            <Image
+                              src="/images/winner3.jpg"
+                              alt="Témoignage"
+                              width={100}
+                              height={100}
+                              className="object-cover rounded-full"
+                            />
+                          </div>
                         </div>
                         <div>
                           <span className="text-emerald-400 text-sm">Témoignage</span>
@@ -958,13 +963,16 @@ export default function Home() {
 
                     <div className="group p-4 rounded-xl bg-gradient-to-br from-red-400/10 to-red-400/5 backdrop-blur-sm border border-red-400/20 hover:border-red-400/40 transition-colors">
                       <div className="flex items-center space-x-4">
-                        <div className="flex-shrink-0 w-16 h-16 relative rounded-lg overflow-hidden">
-                          <Image
-                            src="/images/event.jpg"
-                            alt="Événement"
-                            fill
-                            className="object-cover"
-                          />
+                        <div className="flex-shrink-0">
+                          <div className="flex items-center justify-center h-14 w-14 rounded-xl bg-red-500/20">
+                            <Image
+                              src="/images/event.jpg"
+                              alt="Événement"
+                              width={100}
+                              height={100}
+                              className="object-cover rounded-full"
+                            />
+                          </div>
                         </div>
                         <div>
                           <span className="text-red-400 text-sm">Événement</span>

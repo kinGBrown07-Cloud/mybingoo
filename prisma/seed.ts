@@ -9,37 +9,42 @@ async function main() {
   await prisma.regionModel.deleteMany();
   await prisma.settings.deleteMany();
 
-  // Créer les régions avec les taux de conversion
+  // Créer les régions avec les configurations
   const regions = [
     {
-      name: 'BLACK_AFRICA',
-      XOFPerPoint: 150,
-      euroPerPoint: 0.5,
-      dollarPerPoint: 1
+      name: 'AFRIQUE_NOIRE',
+      currency: 'XOF',
+      pointsPerPlay: 2,
+      costPerPoint: 150,
+      countries: ['CI', 'SN', 'CM', 'BF', 'ML', 'GN', 'BJ', 'TG', 'NE', 'CG', 'GA', 'CD']
     },
     {
-      name: 'WHITE_AFRICA',
-      XOFPerPoint: 150,
-      euroPerPoint: 1,
-      dollarPerPoint: 1
+      name: 'AFRIQUE_BLANCHE',
+      currency: 'EUR',
+      pointsPerPlay: 2,
+      costPerPoint: 0.5,
+      countries: ['MA', 'DZ', 'TN']
     },
     {
       name: 'EUROPE',
-      XOFPerPoint: 150,
-      euroPerPoint: 2,
-      dollarPerPoint: 2
+      currency: 'EUR',
+      pointsPerPlay: 2,
+      costPerPoint: 1.0,
+      countries: ['FR', 'BE', 'CH', 'IT', 'DE', 'ES', 'PT', 'GB']
     },
     {
-      name: 'ASIA',
-      XOFPerPoint: 150,
-      euroPerPoint: 2,
-      dollarPerPoint: 2
+      name: 'ASIE',
+      currency: 'USD',
+      pointsPerPlay: 2,
+      costPerPoint: 1.0,
+      countries: ['CN', 'JP', 'KR', 'VN', 'TH', 'ID', 'MY', 'SG']
     },
     {
-      name: 'AMERICA',
-      XOFPerPoint: 150,
-      euroPerPoint: 2,
-      dollarPerPoint: 2
+      name: 'AMERIQUE',
+      currency: 'USD',
+      pointsPerPlay: 2,
+      costPerPoint: 1.0,
+      countries: ['US', 'CA', 'BR', 'MX']
     }
   ];
 
@@ -56,9 +61,9 @@ async function main() {
       costPerCard: 1,
       blackAfricaRate: 150,
       whiteAfricaRate: 0.5,
-      europeRate: 2,
-      asiaRate: 2,
-      americaRate: 2,
+      europeRate: 1.0,
+      asiaRate: 1.0,
+      americaRate: 1.0,
       minPointsPerGame: 1,
       maxPointsPerGame: 100,
       referralPoints: 5
@@ -76,7 +81,7 @@ async function main() {
         category: prize.category,
         isActive: prize.isActive ?? true,
         stock: prize.stock ?? 10,
-        region: prize.region || 'BLACK_AFRICA'
+        regionId: prize.region || 'AFRIQUE_NOIRE'
       },
     });
   }

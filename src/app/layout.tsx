@@ -1,36 +1,41 @@
-import { Inter } from 'next/font/google'
-import { Toaster } from 'react-hot-toast'
-import './globals.css'
-import Providers from './providers'
-import Navbar from '@/components/Navbar'
-import Footer from '@/components/Footer'
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Toaster } from "react-hot-toast";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import SupabaseProvider from "@/providers/SupabaseProvider";
+import { SessionProvider } from '@/providers/SessionProvider';
+import LoadingScreen from '@/components/LoadingScreen';
+import { Suspense } from 'react';
 
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-})
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: 'Bingoo - Tombola en ligne',
-  description: 'Jouez et gagnez des prix avec Bingoo',
-}
+  title: "Bingoo",
+  description: "Jeu de bingo en ligne",
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={`${inter.variable}`}>
-      <body className="font-sans">
-        <Providers>
-          <Navbar />
-          <main>{children}</main>
-          <Footer />
-        </Providers>
-        <Toaster position="top-center" />
+    <html lang="fr">
+      <body className={inter.className}>
+        <SupabaseProvider>
+          <SessionProvider>
+            <Navbar />
+            <main>
+              <Toaster position="top-center" />
+              <Suspense fallback={<LoadingScreen />}>
+                {children}
+              </Suspense>
+            </main>
+            <Footer />
+          </SessionProvider>
+        </SupabaseProvider>
       </body>
     </html>
-  )
+  );
 }

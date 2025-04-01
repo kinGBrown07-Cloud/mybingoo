@@ -1,11 +1,12 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/providers/SessionProvider';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import LoadingScreen from '@/components/LoadingScreen';
 
-export default function ChangePassword() {
-  const { data: session, status } = useSession();
+export default function ChangePasswordPage() {
+  const { user, loading } = useSession();
   const router = useRouter();
   const [formData, setFormData] = useState({
     currentPassword: '',
@@ -14,9 +15,13 @@ export default function ChangePassword() {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loadingState, setLoadingState] = useState(false);
 
-  if (status === 'unauthenticated') {
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (!user) {
     router.push('/auth/login');
     return null;
   }
@@ -25,11 +30,11 @@ export default function ChangePassword() {
     e.preventDefault();
     setError('');
     setSuccess('');
-    setLoading(true);
+    setLoadingState(true);
 
     if (formData.newPassword !== formData.confirmPassword) {
       setError('Les mots de passe ne correspondent pas');
-      setLoading(false);
+      setLoadingState(false);
       return;
     }
 
@@ -60,7 +65,7 @@ export default function ChangePassword() {
     } catch (err: any) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setLoadingState(false);
     }
   };
 
@@ -138,10 +143,10 @@ export default function ChangePassword() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loadingState}
                   className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 ease-in-out transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? 'Mise à jour...' : 'Mettre à jour'}
+                  {loadingState ? 'Mise à jour...' : 'Mettre à jour'}
                 </button>
               </div>
             </form>
@@ -150,4 +155,4 @@ export default function ChangePassword() {
       </div>
     </div>
   );
-} 
+}

@@ -3,9 +3,14 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }
 
 model User {
@@ -19,7 +24,6 @@ model User {
   points                Int                     @default(0)
   balance               Float                   @default(0)
   currency              String?
-  costPerPlay           Int?
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
   emailVerified         DateTime?
@@ -31,48 +35,56 @@ model User {
   referralEarnings      Int                     @default(0)
   referredBy            String?
   regionId              String?
+  supabaseId            String?                 @unique
   Account               Account[]
+  affiliateTransactions AffiliateTransaction[]
   FraudAlert            FraudAlert[]
   GameHistory           GameHistory[]
-  Session               Session[]
-  TournamentParticipant TournamentParticipant[]
-  UserPrize             UserPrize[]
-  affiliateTransactions AffiliateTransaction[]
   games                 Game[]
   notifications         Notification[]
   payments              Payment[]
+  PendingTransaction    PendingTransaction[]
+  Session               Session[]
+  TournamentParticipant TournamentParticipant[]
   transactions          Transaction[]
+  UserPrize             UserPrize[]
   referrer              User?                   @relation("UserReferrals", fields: [referredBy], references: [affiliateCode])
   referrals             User[]                  @relation("UserReferrals")
-  region                RegionModel?           @relation(fields: [regionId], references: [id])
+  region                RegionModel?            @relation(fields: [regionId], references: [id])
 
   @@map("users")
 }
 
 model RegionModel {
-  id            String        @id @default(uuid())
-  name          String        @unique
-  XOFPerPoint   Float         @default(150)
-  euroPerPoint  Float         @default(0.5)
-  dollarPerPoint Float        @default(1)
+  id            String    @id @default(cuid())
+  name          String    @unique
+  currency      String    @default("EUR")
+  pointsPerPlay Int      @default(2)
+  costPerPoint  Float    @default(1.0)
+  countries     String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
   users         User[]
+  payments      Payment[]
   transactions  Transaction[]
-  
+  pendingTransactions PendingTransaction[]
+  prizes        Prize[]
+
   @@map("regions")
 }
 
 model Game {
-  id           String        @id @default(cuid())
-  points       Int          // Points gagnés ou perdus
-  createdAt    DateTime     @default(now())
-  userId       String
-  prizeId      String
-  status       GameStatus   @default(PENDING)
-  won          Boolean      @default(false)
-  cost         Int          // Coût du jeu en points
-  user         User         @relation(fields: [userId], references: [id])
-  prize        Prize        @relation(fields: [prizeId], references: [id])
-  gameHistory  GameHistory[]
+  id          String        @id @default(cuid())
+  userId      String
+  type        GameType
+  status      GameStatus    @default(PENDING)
+  points      Int
+  won         Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User          @relation(fields: [userId], references: [id])
+  prizes      GamePrize[]
+  history     GameHistory[]
 
   @@map("games")
 }
@@ -81,14 +93,12 @@ model GameHistory {
   id        String   @id @default(cuid())
   gameId    String
   userId    String
-  prizeId   String
-  won       Boolean
-  cost      Int      // Coût du jeu
-  points    Int      // Points gagnés ou perdus
+  prizeId   String?
+  status    String
   createdAt DateTime @default(now())
   game      Game     @relation(fields: [gameId], references: [id])
+  prize     Prize?   @relation(fields: [prizeId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
-  prize     Prize    @relation(fields: [prizeId], references: [id])
 
   @@map("game_history")
 }
@@ -97,48 +107,51 @@ model GamePrize {
   id        String   @id @default(cuid())
   gameId    String
   prizeId   String
+  status    String   @default("PENDING")
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  game      Game     @relation(fields: [gameId], references: [id])
   prize     Prize    @relation(fields: [prizeId], references: [id])
 
   @@map("game_prizes")
 }
 
 model Prize {
-  id          String     @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
   description String?
-  category    Category   // FOOD, CLOTHING, SUPER
-  pointValue  Int        // Valeur en points du prix
   imageUrl    String?
-  isActive    Boolean    @default(true)
-  stock       Int        @default(0)
-  region      Region     @default(BLACK_AFRICA) // Région du prix
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  winners     UserPrize[]
-  tournaments Tournament[]
-  gamePrizes  GamePrize[]
-  games       Game[]         // Relation avec Game
-  gameHistory GameHistory[]  // Relation avec GameHistory
+  value       Float    @default(0)
+  pointValue  Int      @default(0)
+  category    String   @default("default")
+  isActive    Boolean  @default(true)
+  stock       Int      @default(0)
+  regionId    String?  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  region      RegionModel? @relation(fields: [regionId], references: [id])  
+  UserPrize   UserPrize[]
+  Tournament  Tournament[]
+  GamePrize   GamePrize[]
+  GameHistory GameHistory[]
 
   @@map("prizes")
 }
 
 model Tournament {
-  id                    String                  @id
-  name                  String
-  description           String
-  entryFee             Int
-  startTime            DateTime
-  endTime              DateTime
-  minPlayers           Int
-  maxPlayers           Int
-  status               TournamentStatus
-  prizes               Json
-  createdAt            DateTime                @default(now())
-  participants         TournamentParticipant[]
-  prize                Prize                   @relation(fields: [prizeId], references: [id])
-  prizeId              String
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  status      TournamentStatus @default(UPCOMING)
+  maxPlayers  Int       @default(100)
+  entryFee    Int       @default(0)
+  prizeId     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  participants TournamentParticipant[]
+  prize       Prize     @relation(fields: [prizeId], references: [id])
 
   @@map("tournaments")
 }
@@ -174,12 +187,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -206,51 +219,57 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
-enum PaymentProvider {
-  PAYPAL
-}
-
-enum PaymentStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-  REFUNDED
-  CANCELLED
-}
-
 model Payment {
-  id                String          @id @default(cuid())
-  userId            String
-  amount            Float
-  currency          String
-  status            PaymentStatus    @default(PENDING)
-  type              String
-  provider          PaymentProvider
-  reference         String?         // ID de transaction externe (PayPal, etc.)
-  transactionId     String?         // ID de transaction externe (PayPal, etc.)
-  metadata          Json?           // Données supplémentaires spécifiques au provider
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  processedAt       DateTime?
-  user              User            @relation(fields: [userId], references: [id])
+  id            String          @id @default(cuid())
+  userId        String
+  amount        Float
+  currency      String
+  status        PaymentStatus   @default(PENDING)
+  type          String
+  provider      PaymentProvider
+  points        Int            @default(0)
+  paypalOrderId String?         @unique
+  regionId      String         // Déjà obligatoire
+  reference     String?
+  transactionId String?
+  metadata      Json?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  processedAt   DateTime?
+  user          User            @relation(fields: [userId], references: [id])
+  region        RegionModel     @relation(fields: [regionId], references: [id])
 
   @@map("payments")
 }
 
+model PendingTransaction {
+  id        String      @id @default(cuid())
+  userId    String
+  orderId   String      @unique
+  amount    Float
+  currency  String
+  points    Int
+  regionId  String
+  status    String      @default("PENDING")
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id])
+  region    RegionModel @relation(fields: [regionId], references: [id])
+
+  @@map("pending_transactions")
+}
+
 model Transaction {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   userId      String
   type        String
-  points      Int
+  amount      Float
+  points      Int?
   status      String
-  amount      Float?
-  currency    String?
   regionId    String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  processedAt DateTime?
-  user        User      @relation(fields: [userId], references: [id])
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  user        User         @relation(fields: [userId], references: [id])
   region      RegionModel? @relation(fields: [regionId], references: [id])
 
   @@map("transactions")
@@ -303,9 +322,36 @@ model Log {
   @@map("logs")
 }
 
-enum UserRole {
-  USER
-  ADMIN
+model Settings {
+  id               String   @id @default(cuid())
+  cardsPerGame     Int      @default(2)
+  costPerCard      Int      @default(1)
+  blackAfricaRate  Float    @default(150)
+  whiteAfricaRate  Float    @default(0.5)
+  europeRate       Float    @default(0.85)
+  asiaRate         Float    @default(0.75)
+  americaRate      Float    @default(1)
+  defaultPoints    Int      @default(10)
+  minPointsPerGame Int      @default(1)
+  maxPointsPerGame Int      @default(100)
+  referralPoints   Int      @default(5)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("settings")
+}
+
+enum PaymentProvider {
+  PAYPAL
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
 }
 
 enum Category {
@@ -322,12 +368,18 @@ enum Region {
   AMERICA
 }
 
+enum GameType {
+  BINGO
+  SLOT
+  SCRATCH
+  LOTTERY
+}
+
 enum GameStatus {
   PENDING
-  PLAYING
+  IN_PROGRESS
   COMPLETED
   CANCELLED
-  IN_PROGRESS
 }
 
 enum TournamentStatus {
@@ -355,23 +407,4 @@ enum LogCategory {
   SECURITY
   PRIZE
   API
-}
-
-model Settings {
-  id                String   @id @default(cuid())
-  cardsPerGame      Int      @default(2)
-  costPerCard       Int      @default(1)
-  blackAfricaRate   Float    @default(150)    // Taux de conversion pour l'Afrique noire
-  whiteAfricaRate   Float    @default(0.5)    // Taux de conversion pour l'Afrique blanche
-  europeRate        Float    @default(0.85)   // Taux de conversion pour l'Europe
-  asiaRate          Float    @default(0.75)   // Taux de conversion pour l'Asie
-  americaRate       Float    @default(1)      // Taux de conversion pour l'Amérique
-  defaultPoints     Int      @default(10)     // Points par défaut pour les nouveaux utilisateurs
-  minPointsPerGame  Int      @default(1)      // Nombre minimum de points par partie
-  maxPointsPerGame  Int      @default(100)    // Nombre maximum de points par partie
-  referralPoints    Int      @default(5)      // Points gagnés pour un parrainage
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  @@map("settings")
 }

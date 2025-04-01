@@ -6,35 +6,44 @@ import prisma from '@/lib/prisma';
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
+  const type = requestUrl.searchParams.get('type');
 
-  if (code) {
-    const supabase = createRouteHandlerClient({ cookies });
-    
-    // Échange le code contre une session
-    const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
-    
-    if (!error && user) {
-      // Mettre à jour le statut de vérification dans notre base de données
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { emailVerified: new Date() }
-      });
-
-      // Créer une notification de bienvenue
-      await prisma.notification.create({
-        data: {
-          userId: user.id,
-          type: 'VERIFICATION',
-          message: 'Bienvenue sur Mybingoo ! Votre compte a été vérifié avec succès.',
-          read: false
-        },
-      });
-
-      // Rediriger vers le tableau de bord
-      return NextResponse.redirect(`${requestUrl.origin}/dashboard`);
-    }
+  if (!code) {
+    return NextResponse.redirect(`${requestUrl.origin}/auth/login`);
   }
 
-  // En cas d'erreur, rediriger vers la page de connexion
-  return NextResponse.redirect(`${requestUrl.origin}/auth/login?error=verification_failed`);
+  const supabase = createRouteHandlerClient({ cookies });
+    
+  try {
+    if (type === 'email') {
+      // Vérification d'email
+      const { data: { user }, error } = await supabase.auth.verifyOtp({
+        token_hash: code,
+        type: 'email',
+      });
+
+      if (error) throw error;
+
+      if (user) {
+        // Créer une notification de bienvenue
+        await prisma.notification.create({
+          data: {
+            userId: user.id,
+            type: 'VERIFICATION',
+            message: 'Bienvenue sur Mybingoo ! Votre compte a été vérifié avec succès.',
+            read: false
+          },
+        });
+      }
+    } else {
+      // OAuth callback (Google, GitHub)
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) throw error;
+    }
+
+    return NextResponse.redirect(`${requestUrl.origin}/dashboard`);
+  } catch (error) {
+    console.error('Erreur de vérification:', error);
+    return NextResponse.redirect(`${requestUrl.origin}/auth/login?error=verification_failed`);
+  }
 }

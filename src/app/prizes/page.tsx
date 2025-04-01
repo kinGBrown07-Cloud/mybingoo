@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/providers/SessionProvider';
 import { GiftIcon, StarIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
+import LoadingScreen from '@/components/LoadingScreen';
 
 interface Prize {
   id: string;
@@ -18,7 +20,18 @@ interface Prize {
 }
 
 export default function PrizesPage() {
-  const { data: session } = useSession();
+  const { user, loading } = useSession();
+  const router = useRouter();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (!user) {
+    router.push('/auth/login');
+    return null;
+  }
+
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);

@@ -1,16 +1,35 @@
 'use client';
 
-import { useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useState, useEffect } from 'react';
+import { useSession } from '@/providers/SessionProvider';
 import { SparklesIcon } from '@heroicons/react/24/outline';
+import { useRouter } from 'next/navigation';
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 export default function BonusPointsPage() {
-  const { data: session } = useSession();
+  const { user, loading } = useSession();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 pt-24 pb-8">
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    router.push('/auth/login');
+    return null;
+  }
+
   const handleClaimBonus = async () => {
-    if (!session) return;
-    
     setIsLoading(true);
     try {
       // TODO: Implémenter la logique de réclamation des points bonus
@@ -52,57 +71,21 @@ export default function BonusPointsPage() {
                   <span className="font-semibold text-black">Dans 24h</span>
                 </div>
               </div>
-            </div>
-
-            <div className="bg-yellow-50 p-6 rounded-lg">
-              <h3 className="text-lg font-semibold mb-2 text-black">Bonus de Fidélité</h3>
-              <p className="text-black mb-4">
-                Plus vous jouez, plus vous gagnez de points bonus !
-              </p>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-black">Niveau actuel</span>
-                  <span className="font-semibold text-black">Bronze</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-black">Bonus de niveau</span>
-                  <span className="font-semibold text-black">+1 point</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-black">Prochain niveau</span>
-                  <span className="font-semibold text-black">Argent (après 5 achats)</span>
-                </div>
-              </div>
-            </div>
-
-            {session ? (
               <button
                 onClick={handleClaimBonus}
                 disabled={isLoading}
-                className={`w-full py-3 px-4 rounded-md text-white font-semibold ${
+                className={`mt-4 w-full py-2 px-4 rounded-md text-white font-medium ${
                   isLoading
                     ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-yellow-500 hover:bg-yellow-600'
                 }`}
               >
-                {isLoading ? 'Traitement en cours...' : 'Réclamer mes points bonus'}
+                {isLoading ? 'Chargement...' : 'Réclamer mon bonus'}
               </button>
-            ) : (
-              <div className="text-center">
-                <p className="text-black mb-4">
-                  Connectez-vous pour réclamer vos points bonus
-                </p>
-                <a
-                  href="/auth/signin"
-                  className="text-yellow-600 hover:text-yellow-700 font-semibold"
-                >
-                  Se connecter
-                </a>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}

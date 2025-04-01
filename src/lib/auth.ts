@@ -1,85 +1,45 @@
-import { NextAuthOptions } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
-import prisma from './prisma';
-import { compare } from 'bcrypt';
-import { User as PrismaUser, UserRole } from '@prisma/client';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { type User } from '@supabase/supabase-js';
 
-type Role = 'USER' | 'ADMIN';
-
-export interface AuthUser extends Omit<PrismaUser, 'password' | 'emailVerified' | 'createdAt' | 'updatedAt'> {
-  isAdmin: boolean;
+export interface BaseUser extends User {
+  role?: string;
+  points?: number;
+  region?: string;
 }
 
-declare module 'next-auth' {
-  interface User extends AuthUser {}
-  interface Session {
-    user: AuthUser;
-  }
-  interface JWT {
-    role?: UserRole;
-    isAdmin: boolean;
-    image?: string | null;
+export const supabase = createClientComponentClient();
+
+export async function getUser(): Promise<BaseUser | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    // Récupérer les informations supplémentaires de l'utilisateur depuis la table users
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role, points, regionId')
+      .eq('supabaseId', user.id)
+      .single();
+
+    console.log('User data from auth:', userData); // Pour le débogage
+
+    return {
+      ...user,
+      role: userData?.role || 'USER',
+      points: userData?.points || 0,
+      region: userData?.regionId
+    };
+  } catch (error) {
+    console.error('Error getting user:', error);
+    return null;
   }
 }
 
-export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: 'jwt'
-  },
-  providers: [
-    CredentialsProvider({
-      name: 'credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' }
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Missing credentials');
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
-        });
-
-        if (!user || !user.password) {
-          throw new Error('Invalid credentials');
-        }
-
-        const isPasswordValid = await compare(credentials.password, user.password);
-
-        if (!isPasswordValid) {
-          throw new Error('Invalid credentials');
-        }
-
-        const { password, emailVerified, createdAt, updatedAt, ...userWithoutPassword } = user;
-        return {
-          ...userWithoutPassword,
-          isAdmin: user.role === 'ADMIN'
-        };
-      }
-    })
-  ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.role = user.role as UserRole;
-        token.isAdmin = Boolean(user.isAdmin);
-        token.image = user.image || null;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.role = token.role as UserRole;
-        session.user.isAdmin = Boolean(token.isAdmin);
-        session.user.image = token.image || null;
-      }
-      return session;
-    }
-  },
-  pages: {
-    signIn: '/auth/login',
-    error: '/auth/error'
+export async function signOut() {
+  try {
+    await supabase.auth.signOut();
+  } catch (error) {
+    console.error('Error signing out:', error);
+    throw error;
   }
-};
+}

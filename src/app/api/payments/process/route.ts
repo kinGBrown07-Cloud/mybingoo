@@ -1,55 +1,77 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
-import { authOptions } from '@/lib/auth';
+import { getRegionConfigByCountry } from '@/lib/region-config';
+import { PaymentProvider, PaymentStatus, Prisma } from '@prisma/client';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
+  const supabase = createRouteHandlerClient({ cookies });
+  const { data: { session } } = await supabase.auth.getSession();
 
   if (!session?.user?.id) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
   try {
-    const { amount, currency, paymentMethod } = await request.json();
+    const { points, paymentMethod } = await request.json();
 
-    if (!amount || !currency || !paymentMethod) {
-      return new NextResponse('Missing required fields', { status: 400 });
+    if (!points || !paymentMethod) {
+      return new NextResponse('Points et méthode de paiement requis', { status: 400 });
     }
 
+    // Récupérer les informations de l'utilisateur
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { country: true }
+    });
+
+    if (!user) {
+      return new NextResponse('Utilisateur non trouvé', { status: 404 });
+    }
+
+    // Obtenir la configuration de la région
+    const regionConfig = getRegionConfigByCountry(user.country || 'FR');
+    const totalAmount = points * regionConfig.costPerPoint;
+
     // Créer la transaction
+    const paymentData: Prisma.PaymentUncheckedCreateInput = {
+      userId: session.user.id,
+      amount: totalAmount,
+      currency: regionConfig.currency,
+      provider: paymentMethod as PaymentProvider,
+      type: 'POINTS_PURCHASE',
+      status: PaymentStatus.PENDING,
+      points: points,
+      regionId: regionConfig.region
+    };
+
     const payment = await prisma.payment.create({
-      data: {
-        userId: session.user.id,
-        amount,
-        currency,
-        provider: paymentMethod,
-        type: 'POINTS_PURCHASE',
-        status: 'PENDING'
-      }
+      data: paymentData
     });
 
     // Ici, vous intégreriez votre logique de paiement réelle
     // Pour l'exemple, on simule un succès
     const updatedPayment = await prisma.payment.update({
       where: { id: payment.id },
-      data: { status: 'COMPLETED' }
+      data: { status: PaymentStatus.COMPLETED }
     });
 
     // Mettre à jour les points de l'utilisateur
-    const pointsToAdd = Math.floor(amount / 100); // 1 point pour chaque 100 unités de monnaie
     await prisma.user.update({
       where: { id: session.user.id },
       data: {
         points: {
-          increment: pointsToAdd
+          increment: points
         }
       }
     });
 
-    return NextResponse.json(updatedPayment);
+    return NextResponse.json({ success: true, payment: updatedPayment });
   } catch (error) {
-    console.error('Error processing payment:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    console.error('Erreur lors du traitement du paiement:', error);
+    return new NextResponse('Erreur lors du traitement du paiement', { status: 500 });
   }
 }

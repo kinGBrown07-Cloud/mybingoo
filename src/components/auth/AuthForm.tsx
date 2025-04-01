@@ -66,8 +66,31 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
     try {
       if (mode === 'register') {
+        // Validation des champs requis
+        if (!formData.name || !formData.phone || !formData.country) {
+          toast.error('Veuillez remplir tous les champs obligatoires');
+          setIsLoading(false);
+          return;
+        }
+
         if (formData.password !== formData.confirmPassword) {
           toast.error('Les mots de passe ne correspondent pas');
+          setIsLoading(false);
+          return;
+        }
+
+        // Validation du format de téléphone
+        const phoneRegex = /^\+?[0-9]{8,15}$/;
+        if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
+          toast.error('Numéro de téléphone invalide');
+          setIsLoading(false);
+          return;
+        }
+
+        // Validation de l'email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+          toast.error('Adresse email invalide');
           setIsLoading(false);
           return;
         }
@@ -91,9 +114,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
         if (authError) {
           console.error('Erreur d\'inscription:', authError);
-          toast.error(authError.message === 'User already registered' 
-            ? 'Cet email est déjà enregistré'
-            : 'Erreur lors de l\'inscription');
+          if (authError.message === 'User already registered') {
+            toast.error('Cet email est déjà enregistré');
+          } else if (authError.message.includes('password')) {
+            toast.error('Le mot de passe doit contenir au moins 6 caractères');
+          } else {
+            toast.error('Erreur lors de l\'inscription');
+          }
           setIsLoading(false);
           return;
         }

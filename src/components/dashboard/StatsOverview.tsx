@@ -1,90 +1,66 @@
 'use client';
 
 import React from 'react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer
-} from 'recharts';
-import { useDataCache } from '@/hooks/useDataCache';
+import { UserData } from '@/types/user';
+import { CurrencyDollarIcon, TrophyIcon, ChartBarIcon, StarIcon } from '@heroicons/react/24/outline';
 
-interface StatsData {
-  date: string;
-  points: number;
-  games: number;
-  winRate: number;
+interface StatsOverviewProps {
+  userData: UserData | null;
 }
 
-export default function StatsOverview() {
-  const { data, loading } = useDataCache<StatsData[]>(
-    async () => {
-      const response = await fetch('/api/stats/overview');
-      return response.json();
+export default function StatsOverview({ userData }: StatsOverviewProps) {
+  const stats = [
+    {
+      title: 'Points',
+      value: userData?.points || 0,
+      icon: <StarIcon className="w-6 h-6 text-orange-600" />,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100',
     },
-    { key: 'stats-overview', ttl: 300 } // 5 minutes cache
-  );
-
-  if (loading) {
-    return (
-      <div className="animate-pulse bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 h-64"></div>
-    );
-  }
+    {
+      title: 'Solde',
+      value: `${userData?.balance || 0} ${userData?.currency || 'EUR'}`,
+      icon: <CurrencyDollarIcon className="w-6 h-6 text-green-600" />,
+      color: 'text-green-600',
+      bgColor: 'bg-green-100',
+    },
+    {
+      title: 'Parties jouées',
+      value: userData?.gameHistory?.length || 0,
+      icon: <ChartBarIcon className="w-6 h-6 text-blue-600" />,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+    },
+    {
+      title: 'Tournois actifs',
+      value: userData?.tournaments?.filter(t => t.status === 'ACTIVE').length || 0,
+      icon: <TrophyIcon className="w-6 h-6 text-purple-600" />,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-100',
+    },
+  ];
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700">
       <h2 className="text-xl font-semibold text-white mb-6">Statistiques de jeu</h2>
-      <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart
-            data={data ?? []} // Assure que data est toujours un tableau
-            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-          >
-            <defs>
-              <linearGradient id="colorPoints" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#EAB308" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#EAB308" stopOpacity={0}/>
-              </linearGradient>
-              <linearGradient id="colorWinRate" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#22C55E" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#22C55E" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis
-              dataKey="date"
-              stroke="#9CA3AF"
-              tick={{ fill: '#9CA3AF' }}
-            />
-            <YAxis stroke="#9CA3AF" tick={{ fill: '#9CA3AF' }} />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: '#1F2937',
-                border: '1px solid #374151',
-                borderRadius: '0.5rem',
-              }}
-              labelStyle={{ color: '#9CA3AF' }}
-              itemStyle={{ color: '#F3F4F6' }}
-            />
-            <Area
-              type="monotone"
-              dataKey="points"
-              stroke="#EAB308"
-              fillOpacity={1}
-              fill="url(#colorPoints)"
-            />
-            <Area
-              type="monotone"
-              dataKey="winRate"
-              stroke="#22C55E"
-              fillOpacity={1}
-              fill="url(#colorWinRate)"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((stat, index) => (
+          <div key={index} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                  {stat.icon}
+                </div>
+                <span className="text-sm font-medium text-gray-500">
+                  {stat.title}
+                </span>
+              </div>
+              <div className={`text-3xl font-bold ${stat.color}`} data-testid={stat.title.toLowerCase().replace(' ', '-')}>
+                {stat.value}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

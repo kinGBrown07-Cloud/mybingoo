@@ -14,54 +14,47 @@ export const REGION_NAMES = {
   AMERIQUE: 'Amérique',
 } as const;
 
-export type RegionKey = keyof typeof REGIONS;
+export type RegionKey = 'AFRIQUE_NOIRE' | 'AFRIQUE_BLANCHE' | 'EUROPE' | 'ASIE' | 'AMERIQUE';
 
-export type CountryCode = 
-  | 'CI' | 'SN' | 'CM' | 'BF' | 'ML' | 'GN' | 'BJ' | 'TG' | 'NE' | 'CG' | 'GA' | 'CD' // Afrique Noire
-  | 'MA' | 'DZ' | 'TN' // Afrique Blanche
-  | 'FR' | 'BE' | 'CH' | 'IT' | 'DE' | 'ES' | 'PT' | 'GB' // Europe
-  | 'CN' | 'JP' | 'KR' | 'VN' | 'TH' | 'ID' | 'MY' | 'SG' // Asie
-  | 'US' | 'CA' | 'BR' | 'MX'; // Amérique
-
-type RegionConfig = {
-  countries: CountryCode[];
-  currency: 'XOF' | 'EUR' | 'USD';
-  pointsPerPlay: number;
-  costPerPoint: number;
-};
+interface RegionConfig {
+  countries: string[];
+  currency: string;
+  pointsPerGame: number;
+  pointCost: number;
+}
 
 export const REGION_CONFIG: Record<RegionKey, RegionConfig> = {
   AFRIQUE_NOIRE: {
     countries: ['CI', 'SN', 'CM', 'BF', 'ML', 'GN', 'BJ', 'TG', 'NE', 'CG', 'GA', 'CD'],
     currency: 'XOF',
-    pointsPerPlay: 2,
-    costPerPoint: 150,
+    pointsPerGame: 2,
+    pointCost: 150
   },
   AFRIQUE_BLANCHE: {
     countries: ['MA', 'DZ', 'TN'],
     currency: 'EUR',
-    pointsPerPlay: 2,
-    costPerPoint: 0.5,
+    pointsPerGame: 2,
+    pointCost: 0.5
   },
   EUROPE: {
     countries: ['FR', 'BE', 'CH', 'IT', 'DE', 'ES', 'PT', 'GB'],
     currency: 'EUR',
-    pointsPerPlay: 2,
-    costPerPoint: 1,
+    pointsPerGame: 2,
+    pointCost: 1
   },
   ASIE: {
     countries: ['CN', 'JP', 'KR', 'VN', 'TH', 'ID', 'MY', 'SG'],
     currency: 'USD',
-    pointsPerPlay: 2,
-    costPerPoint: 1,
+    pointsPerGame: 2,
+    pointCost: 1
   },
   AMERIQUE: {
     countries: ['US', 'CA', 'BR', 'MX'],
     currency: 'USD',
-    pointsPerPlay: 2,
-    costPerPoint: 1,
-  },
-} as const;
+    pointsPerGame: 2,
+    pointCost: 1
+  }
+};
 
 export const DEFAULT_REGION: RegionKey = 'EUROPE';
 

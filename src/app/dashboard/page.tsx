@@ -3,97 +3,24 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { PlusIcon, CreditCardIcon } from '@heroicons/react/24/outline';
+import DashboardNav from '@/components/dashboard/DashboardNav';
+import ResponsiveChart from '@/components/dashboard/ResponsiveChart';
+import ResponsiveTable from '@/components/dashboard/ResponsiveTable';
 import StatsOverview from '@/components/dashboard/StatsOverview';
 import TwoFactorAuth from '@/components/auth/TwoFactorAuth';
 import PaymentMethods from '@/components/payment/PaymentMethods';
 import BuyPoints from '@/components/payment/BuyPoints';
-import GamesList from '@/components/games/GamesList'; 
+import GamesList from '@/components/games/GamesList';
 import { useDataCache } from '@/hooks/useDataCache';
 import { REGION_CONFIG, type RegionKey, type CountryCode } from '@/config/regions';
-
-interface UserData {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  country: string;
-  image: string | null;
-  points: number;
-  balance: number;
-  currency: string;
-  role: string;
-  affiliateCode: string;
-  referralCount: number;
-  referralEarnings: number;
-  region: {
-    costPerPoint: number;
-    pointsPerPlay: number;
-    currency: string;
-  };
-  gameHistory: {
-    id: string;
-    gameType: string;
-    cost: number;
-    points: number;
-    won: boolean;
-    createdAt: string;
-    prizes: {
-      prize: {
-        name: string;
-        image: string;
-      };
-    }[];
-  }[];
-  transactions: {
-    id: string;
-    amount: number;
-    points: number;
-    type: 'DEPOSIT' | 'WITHDRAWAL';
-    status: string;
-    provider: string;
-    createdAt: string;
-  }[];
-  notifications: {
-    id: string;
-    message: string;
-    isRead: boolean;
-    createdAt: string;
-  }[];
-  dailyRewards: {
-    id: string;
-    streakDay: number;
-    pointsAwarded: number;
-    claimedAt: string;
-  }[];
-  tournaments: {
-    id: string;
-    name: string;
-    status: string;
-    score: number;
-  }[];
-}
+import { formatGameHistoryData, formatTransactionData } from '@/utils/chartHelpers';
+import { UserData, Tournament, LeaderboardPlayer } from '@/types/user';
 
 interface LoginHistory {
   id: string;
   device: string;
   location: string;
   timestamp: string;
-}
-
-interface Tournament {
-  id: string;
-  name: string;
-  participants: number;
-  prize: string;
-  status: 'UPCOMING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'IN_PROGRESS';
-}
-
-interface LeaderboardPlayer {
-  id: string;
-  name: string;
-  points: number;
-  winRate: number;
 }
 
 const supabase = createClientComponentClient();
@@ -139,6 +66,15 @@ export default function Dashboard() {
   const [loginHistory, setLoginHistory] = useState<LoginHistory[]>([]);
   const [activeTournaments, setActiveTournaments] = useState<Tournament[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardPlayer[]>([]);
+
+  // Préparation des données pour les graphiques
+  const gameHistoryChartData = userData?.gameHistory 
+    ? formatGameHistoryData(userData.gameHistory)
+    : { labels: [], datasets: [] };
+
+  const transactionChartData = userData?.transactions
+    ? formatTransactionData(userData.transactions)
+    : { labels: [], datasets: [] };
 
   useEffect(() => {
     const getUser = async () => {
@@ -320,291 +256,138 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 pt-24">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* En-tête du dashboard */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Tableau de bord</h1>
-            <p className="text-gray-400">Bienvenue, {userData?.name || 'Joueur'}</p>
+    <div className="min-h-screen bg-gray-50">
+      <DashboardNav />
+      <div className="md:ml-64 flex-1 p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Stats Overview */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <StatsOverview userData={userData} />
           </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
-              <div className="text-yellow-500 font-medium">Points</div>
-              <div className="text-2xl font-bold text-white">{userData?.points || 0}</div>
+
+          {/* Graphiques */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <ResponsiveChart
+              data={gameHistoryChartData}
+              title="Historique des parties"
+              height={300}
+            />
+            <ResponsiveChart
+              data={transactionChartData}
+              title="Historique des transactions"
+              height={300}
+            />
+          </div>
+
+          {/* Historique des transactions */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4">Dernières transactions</h3>
+            <ResponsiveTable
+              columns={[
+                {
+                  key: 'createdAt',
+                  label: 'Date',
+                  priority: 1,
+                  render: (value) => new Date(value as string).toLocaleDateString()
+                },
+                { key: 'type', label: 'Type', priority: 1 },
+                {
+                  key: 'amount',
+                  label: 'Montant',
+                  priority: 1,
+                  render: (value) => `${value} ${userData?.currency || 'EUR'}`
+                },
+                { key: 'status', label: 'Statut', priority: 2 },
+                { key: 'provider', label: 'Fournisseur', priority: 3 }
+              ]}
+              data={userData?.transactions || []}
+              itemsPerPage={5}
+            />
+          </div>
+
+          {/* Liste des parties */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4">Parties récentes</h3>
+            <ResponsiveTable
+              columns={[
+                {
+                  key: 'createdAt',
+                  label: 'Date',
+                  priority: 1,
+                  render: (value) => new Date(value as string).toLocaleDateString()
+                },
+                { key: 'gameType', label: 'Type', priority: 1 },
+                {
+                  key: 'points',
+                  label: 'Points',
+                  priority: 1,
+                  render: (value) => `${value} pts`
+                },
+                {
+                  key: 'won',
+                  label: 'Résultat',
+                  priority: 2,
+                  render: (value) => value ? '🏆 Gagné' : '❌ Perdu'
+                },
+                {
+                  key: 'prizes',
+                  label: 'Prix gagné',
+                  priority: 3,
+                  render: (value) => {
+                    const prizes = value as { prize: { name: string } }[];
+                    return prizes.length > 0
+                      ? prizes.map(p => p.prize.name).join(', ')
+                      : '-';
+                  }
+                }
+              ]}
+              data={userData?.gameHistory || []}
+              itemsPerPage={5}
+            />
+          </div>
+
+          {/* Tournois actifs */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4">Tournois actifs</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {userData?.tournaments?.map((tournament) => (
+                <div
+                  key={tournament.id}
+                  className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow"
+                >
+                  <h4 className="font-semibold">{tournament.name}</h4>
+                  <p className="text-sm text-gray-600">Score: {tournament.score}</p>
+                  <span className={`
+                    inline-block px-2 py-1 text-xs rounded-full mt-2
+                    ${tournament.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+                  `}>
+                    {tournament.status}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
 
-        {/* Navigation du dashboard */}
-        <div className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-1 mb-8">
-          <nav className="flex space-x-1">
-            {['overview', 'games', 'payments', 'settings'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === tab
-                    ? 'bg-yellow-500 text-gray-900'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-                }`}
-              >
-                {tab === 'overview' && 'Vue d\'ensemble'}
-                {tab === 'games' && 'Jeux'}
-                {tab === 'payments' && 'Paiements'}
-                {tab === 'settings' && 'Paramètres'}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Contenu principal */}
-        <div className="space-y-8">
-          {activeTab === 'overview' && (
-            <div className="space-y-8">
-              <StatsOverview />
-            </div>
-          )}
-
-          {activeTab === 'games' && (
-            <div className="space-y-8">
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-4">Jeux disponibles</h2>
-                <GamesList userRegion={userData?.region?.costPerPoint ? 'AFRIQUE_NOIRE' : 'EUROPE'} />
-              </div>
-
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-4">Historique des parties</h2>
-                {userData?.gameHistory && userData.gameHistory.length > 0 ? (
-                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700">
-                    <div className="space-y-4">
-                      {userData.gameHistory.map((game) => (
-                        <div key={game.id} className="flex items-center justify-between p-4 bg-gray-700/30 rounded-lg">
-                          <div>
-                            <div className="text-white font-medium">{game.gameType}</div>
-                            <div className="text-gray-400 text-sm">{new Date(game.createdAt).toLocaleDateString()}</div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-yellow-500">{game.points} points</div>
-                            <div className={`text-sm font-medium ${game.won ? 'text-green-500' : 'text-red-500'}`}>
-                              {game.won ? 'Gagné' : 'Perdu'}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-gray-400 text-center py-8">
-                    Aucune partie jouée pour le moment
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'payments' && (
-            <div className="space-y-8">
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-4">Méthodes de paiement</h2>
-                <PaymentMethods 
-                  amount={userData?.region?.costPerPoint ? userData.region.costPerPoint * 2 : 300}
-                  currency={userData?.region?.currency || 'EUR'}
-                  points={userData?.region?.pointsPerPlay || 2}
-                />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-4">Acheter des points</h2>
-                <BuyPoints />
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <div className="space-y-8">
-              {/* Profil */}
-              <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700">
-                <h2 className="text-xl font-semibold text-white mb-4">Profil</h2>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="flex items-center space-x-6">
-                    <div className="relative">
-                      <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-700">
-                        {imagePreview ? (
-                          <img
-                            src={imagePreview}
-                            alt="Photo de profil"
-                            width={96}
-                            height={96}
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
-                            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                      <label className="absolute bottom-0 right-0 bg-gray-800 rounded-full p-2 cursor-pointer hover:bg-gray-700 transition-colors">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageChange}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-medium text-white">{userData?.name}</h3>
-                      <p className="text-gray-400">{userData?.email}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-400 mb-1">
-                        Nom
-                      </label>
-                      <input
-                        type="text"
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="phone" className="block text-sm font-medium text-gray-400 mb-1">
-                        Téléphone
-                      </label>
-                      <input
-                        type="tel"
-                        id="phone"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="country" className="block text-sm font-medium text-gray-400 mb-1">
-                        Pays
-                      </label>
-                      <select
-                        id="country"
-                        value={formData.country}
-                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                      >
-                        <option value="">Sélectionnez votre pays</option>
-                        {Object.entries(REGION_CONFIG).map(([region, config]) => (
-                          <optgroup key={region} label={region.replace('_', ' ')}>
-                            {config.countries.map((country) => (
-                              <option key={country} value={country}>
-                                {country}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {error && (
-                    <div className="text-red-500 text-sm">{error}</div>
-                  )}
-                  {success && (
-                    <div className="text-green-500 text-sm">{success}</div>
-                  )}
-
-                  <div className="flex justify-end">
-                    <button
-                      type="submit"
-                      className="bg-yellow-500 text-gray-900 font-medium px-6 py-2 rounded-lg hover:bg-yellow-400 transition-colors"
-                    >
-                      Enregistrer les modifications
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* Programme d'affiliation */}
-              <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700">
-                <h2 className="text-xl font-semibold text-white mb-4">Programme d'affiliation</h2>
-                <div className="space-y-6">
-                  <div className="bg-gray-700/50 rounded-lg p-4">
-                    <h3 className="text-lg font-medium text-white mb-2">Comment ça marche ?</h3>
-                    <ul className="space-y-2 text-gray-300">
-                      <li className="flex items-center">
-                        <svg className="w-5 h-5 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Invitez vos amis à rejoindre Bingoo
-                      </li>
-                      <li className="flex items-center">
-                        <svg className="w-5 h-5 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Gagnez 10% sur leurs achats de points
-                      </li>
-                      <li className="flex items-center">
-                        <svg className="w-5 h-5 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Gagnez 5% sur leurs gains
-                      </li>
-                    </ul>
-                  </div>
-
-                  <div className="bg-gray-700/50 rounded-lg p-4">
-                    <h3 className="text-lg font-medium text-white mb-2">Votre code d'affiliation</h3>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-1 bg-gray-800 rounded-lg p-3">
-                        <p className="text-yellow-500 font-mono text-lg">{userData?.affiliateCode || 'Génération en cours...'}</p>
-                      </div>
-                      <button 
-                        onClick={handleCopyAffiliate}
-                        className="bg-yellow-500 text-gray-900 font-medium px-4 py-2 rounded-lg hover:bg-yellow-400 transition-colors"
-                      >
-                        Copier
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-700/50 rounded-lg p-4">
-                    <h3 className="text-lg font-medium text-white mb-2">Vos gains d'affiliation</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-gray-400">Gains totaux</p>
-                        <p className="text-2xl font-bold text-white">{userData?.referralEarnings || 0} FCFA</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-400">Parrainages</p>
-                        <p className="text-2xl font-bold text-white">{userData?.referralCount || 0}</p>
-                      </div>
-                    </div>
-                  </div>
+          {/* Notifications */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4">Notifications</h3>
+            <div className="space-y-4">
+              {userData?.notifications?.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`
+                    p-4 rounded-lg border
+                    ${notification.isRead ? 'bg-white' : 'bg-orange-50 border-orange-200'}
+                  `}
+                >
+                  <p className="text-sm">{notification.message}</p>
+                  <span className="text-xs text-gray-500">
+                    {new Date(notification.createdAt).toLocaleDateString()}
+                  </span>
                 </div>
-              </div>
-
-              {/* Sécurité */}
-              <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700">
-                <h2 className="text-xl font-semibold text-white mb-6">Sécurité</h2>
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">
-                      Double authentification
-                    </label>
-                    <TwoFactorAuth />
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

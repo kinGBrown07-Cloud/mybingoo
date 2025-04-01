@@ -5,10 +5,11 @@ import { useSession } from 'next-auth/react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { Prize, Region, GameCategory } from '@/types/game';
+import ImageUploader from '@/components/admin/ImageUploader';
 
 interface PrizeFormData extends Omit<Prize, 'id' | 'createdAt' | 'updatedAt'> {
   stock: number;
-  value: number; // Changez le type de value pour number
+  value: number;
 }
 
 const REGIONS: Region[] = ['BLACK_AFRICA', 'WHITE_AFRICA', 'EUROPE', 'ASIA', 'AMERICA'];
@@ -42,11 +43,20 @@ export default function AdminPrizesPage() {
     isActive: true,
     stock: 0,
     region: 'BLACK_AFRICA',
-    value: 0 // Initialisez value avec un nombre
+    value: 0
   });
+
+  const handleImageUploaded = (url: string) => {
+    setNewPrize(prev => ({ ...prev, imageUrl: url }));
+  };
 
   const handleAddPrize = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newPrize.imageUrl) {
+      toast.error('Veuillez télécharger une image pour le prix');
+      return;
+    }
+
     try {
       const response = await fetch('/api/admin/prizes', {
         method: 'POST',
@@ -72,7 +82,7 @@ export default function AdminPrizesPage() {
         isActive: true,
         stock: 0,
         region: selectedRegion,
-        value: 0 // Réinitialisez value avec un nombre
+        value: 0
       });
     } catch (error) {
       toast.error('Erreur lors de l\'ajout du prix');
@@ -115,8 +125,8 @@ export default function AdminPrizesPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Gestion des Prix</h1>
-
+      <h1 className="text-2xl font-bold mb-6">Gestion des Prix</h1>
+      
       {/* Sélecteurs de catégorie et région */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <div>
@@ -159,66 +169,137 @@ export default function AdminPrizesPage() {
       </div>
 
       {/* Formulaire d'ajout de prix */}
-      <form onSubmit={handleAddPrize} className="bg-white p-6 rounded-lg shadow-md mb-8">
+      <form onSubmit={handleAddPrize} className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Ajouter un nouveau prix</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block mb-2">Nom</label>
-            <input
-              type="text"
-              value={newPrize.name}
-              onChange={(e) => setNewPrize({ ...newPrize, name: e.target.value })}
-              className="w-full p-2 border rounded"
-              required
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Image du prix
+            </label>
+            <ImageUploader
+              onImageUploaded={handleImageUploaded}
+              folder="prizes"
+              defaultImage={newPrize.imageUrl}
             />
           </div>
-          <div>
-            <label className="block mb-2">Image URL</label>
-            <input
-              type="url"
-              value={newPrize.imageUrl}
-              onChange={(e) => setNewPrize({ ...newPrize, imageUrl: e.target.value })}
-              className="w-full p-2 border rounded"
-              required
-            />
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nom du prix
+              </label>
+              <input
+                type="text"
+                value={newPrize.name}
+                onChange={(e) => setNewPrize({ ...newPrize, name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description
+              </label>
+              <textarea
+                value={newPrize.description}
+                onChange={(e) => setNewPrize({ ...newPrize, description: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                rows={3}
+                required
+              />
+            </div>
           </div>
-          <div>
-            <label className="block mb-2">Valeur en Points</label>
-            <input
-              type="number"
-              value={newPrize.pointValue}
-              onChange={(e) => setNewPrize({ ...newPrize, pointValue: parseInt(e.target.value) })}
-              className="w-full p-2 border rounded"
-              required
-              min="0"
-            />
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Catégorie
+              </label>
+              <select
+                value={newPrize.category}
+                onChange={(e) => setNewPrize({ ...newPrize, category: e.target.value as GameCategory })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                required
+              >
+                {CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {CATEGORY_LABELS[category]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Région
+              </label>
+              <select
+                value={newPrize.region}
+                onChange={(e) => setNewPrize({ ...newPrize, region: e.target.value as Region })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                required
+              >
+                {REGIONS.map((region) => (
+                  <option key={region} value={region}>
+                    {REGION_LABELS[region]}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="block mb-2">Stock</label>
-            <input
-              type="number"
-              value={newPrize.stock}
-              onChange={(e) => setNewPrize({ ...newPrize, stock: parseInt(e.target.value) })}
-              className="w-full p-2 border rounded"
-              required
-              min="0"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block mb-2">Description</label>
-            <textarea
-              value={newPrize.description}
-              onChange={(e) => setNewPrize({ ...newPrize, description: e.target.value })}
-              className="w-full p-2 border rounded"
-              required
-              rows={3}
-            />
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Valeur en points
+              </label>
+              <input
+                type="number"
+                value={newPrize.pointValue}
+                onChange={(e) => setNewPrize({ ...newPrize, pointValue: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                min="0"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Stock disponible
+              </label>
+              <input
+                type="number"
+                value={newPrize.stock}
+                onChange={(e) => setNewPrize({ ...newPrize, stock: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                min="0"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Valeur marchande
+              </label>
+              <input
+                type="number"
+                value={newPrize.value}
+                onChange={(e) => setNewPrize({ ...newPrize, value: parseFloat(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                min="0"
+                step="0.01"
+                required
+              />
+            </div>
           </div>
         </div>
-        <div className="mt-4">
+
+        <div className="mt-6">
           <button
             type="submit"
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
           >
             Ajouter le prix
           </button>

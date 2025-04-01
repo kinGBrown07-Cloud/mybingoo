@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSupabase } from '@/providers/SupabaseProvider';
+import { useSupabase } from '@/hooks/useSupabase';
+import { REGION_CONFIG, type RegionKey } from '@/config/regions';
+import { Illustration } from '@/types/illustration';
+import ImageUploader from '@/components/admin/ImageUploader';
+
 import {
   UsersIcon,
   CurrencyDollarIcon,
@@ -16,29 +20,45 @@ import Link from 'next/link';
 interface DashboardStats {
   totalUsers: number;
   activeUsers: number;
-  totalPrizes: number;
   totalTransactions: number;
-  totalPoints: number;
+  totalRevenue: number;
   recentTransactions: {
     id: string;
+    userId: string;
     amount: number;
-    type: string;
     status: string;
-    createdAt: string;
-  }[];
-  regions: {
-    name: string;
-    users: number;
-    revenue: number;
-    currency: string;
+    date: string;
   }[];
 }
+
+interface IllustrationFormData extends Omit<Illustration, 'id' | 'createdAt' | 'updatedAt'> {
+  region: RegionKey;
+}
+
+const REGIONS: RegionKey[] = Object.keys(REGION_CONFIG) as RegionKey[];
+
+const REGION_LABELS: Record<RegionKey, string> = {
+  AFRIQUE_NOIRE: 'Afrique Noire',
+  AFRIQUE_BLANCHE: 'Afrique Blanche',
+  EUROPE: 'Europe',
+  ASIE: 'Asie',
+  AMERIQUE: 'Amérique'
+};
 
 export default function AdminDashboard() {
   const router = useRouter();
   const { user } = useSupabase();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [illustrations, setIllustrations] = useState<Illustration[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<RegionKey>('AFRIQUE_NOIRE');
+  const [newIllustration, setNewIllustration] = useState<IllustrationFormData>({
+    name: '',
+    description: '',
+    imageUrl: '',
+    region: 'AFRIQUE_NOIRE',
+    isActive: true
+  });
 
   const refreshStats = async () => {
     try {
@@ -47,6 +67,87 @@ export default function AdminDashboard() {
       setStats(data);
     } catch (error) {
       console.error('Erreur lors de la récupération des statistiques:', error);
+    }
+  };
+
+  const handleImageUploaded = (url: string) => {
+    setNewIllustration(prev => ({ ...prev, imageUrl: url }));
+  };
+
+  const handleAddIllustration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newIllustration.imageUrl) {
+      alert('Veuillez télécharger une image pour l\'illustration');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/illustrations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newIllustration),
+      });
+
+      if (!response.ok) throw new Error('Erreur lors de l\'ajout de l\'illustration');
+
+      const addedIllustration = await response.json();
+      setIllustrations([...illustrations, addedIllustration]);
+      alert('Illustration ajoutée avec succès');
+
+      // Reset form
+      setNewIllustration({
+        name: '',
+        description: '',
+        imageUrl: '',
+        region: selectedRegion,
+        isActive: true
+      });
+    } catch (error) {
+      alert('Erreur lors de l\'ajout de l\'illustration');
+    }
+  };
+
+  const handleToggleAvailability = async (id: string) => {
+    try {
+      const response = await fetch(`/api/admin/illustrations/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          isActive: !illustrations.find(illus => illus.id === id)?.isActive 
+        }),
+      });
+
+      if (response.ok) {
+        setIllustrations(illustrations.map(illus => 
+          illus.id === id ? { ...illus, isActive: !illus.isActive } : illus
+        ));
+        alert('Statut de l\'illustration mis à jour');
+      }
+    } catch (error) {
+      alert('Erreur lors de la mise à jour de l\'illustration');
+    }
+  };
+
+  const handleDeleteIllustration = async (id: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette illustration ?')) return;
+
+    try {
+      const response = await fetch(`/api/admin/illustrations/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setIllustrations(illustrations.filter(illus => illus.id !== id));
+        alert('Illustration supprimée avec succès');
+      } else {
+        throw new Error('Erreur lors de la suppression');
+      }
+    } catch (error) {
+      alert('Erreur lors de la suppression de l\'illustration');
     }
   };
 
@@ -129,8 +230,8 @@ export default function AdminDashboard() {
                   <CurrencyDollarIcon className="h-6 w-6 text-green-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Points en circulation</p>
-                  <p className="text-2xl font-semibold text-gray-900">{stats?.totalPoints || 0}</p>
+                  <p className="text-sm font-medium text-gray-600">Revenus totaux</p>
+                  <p className="text-2xl font-semibold text-gray-900">{stats?.totalRevenue || 0}</p>
                 </div>
               </div>
             </div>
@@ -249,10 +350,10 @@ export default function AdminDashboard() {
                       ID
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Montant
+                      Utilisateur
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
+                      Montant
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Statut
@@ -269,10 +370,10 @@ export default function AdminDashboard() {
                         {transaction.id}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {transaction.amount}
+                        {transaction.userId}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {transaction.type}
+                        {transaction.amount}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -284,12 +385,147 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(transaction.createdAt).toLocaleDateString()}
+                        {new Date(transaction.date).toLocaleDateString()}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Gestion des illustrations */}
+          <div className="bg-white rounded-lg shadow mt-8">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">Gestion des Illustrations</h2>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Ajouter une nouvelle illustration</h3>
+                  <form onSubmit={handleAddIllustration} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nom de l'illustration
+                      </label>
+                      <input
+                        type="text"
+                        value={newIllustration.name}
+                        onChange={(e) => setNewIllustration({ ...newIllustration, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Description
+                      </label>
+                      <textarea
+                        value={newIllustration.description}
+                        onChange={(e) => setNewIllustration({ ...newIllustration, description: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        rows={3}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Région
+                      </label>
+                      <select
+                        value={newIllustration.region}
+                        onChange={(e) => setNewIllustration({ ...newIllustration, region: e.target.value as RegionKey })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        required
+                      >
+                        {REGIONS.map((region) => (
+                          <option key={region} value={region}>
+                            {REGION_LABELS[region]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <ImageUploader onImageUploaded={handleImageUploaded} />
+                    </div>
+
+                    <div>
+                      <button
+                        type="submit"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        Ajouter l'illustration
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Illustrations existantes</h3>
+                  <div className="space-y-4">
+                    {illustrations.map((illus) => (
+                      <div
+                        key={illus.id}
+                        className="bg-white border border-gray-200 rounded-lg p-4"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="flex-shrink-0 h-16 w-16">
+                            <img
+                              src={illus.imageUrl}
+                              alt={illus.name}
+                              className="h-16 w-16 rounded-lg object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900">
+                              {illus.name}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {REGION_LABELS[illus.region as RegionKey]}
+                            </p>
+                            <p className="text-sm text-gray-500 line-clamp-2">
+                              {illus.description}
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleToggleAvailability(illus.id)}
+                              className={`px-3 py-1 rounded-md text-sm font-medium ${
+                                illus.isActive
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {illus.isActive ? 'Actif' : 'Inactif'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteIllustration(illus.id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <svg
+                                className="h-5 w-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

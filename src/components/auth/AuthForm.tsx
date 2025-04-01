@@ -73,6 +73,17 @@ export default function AuthForm({ mode }: AuthFormProps) {
           return;
         }
 
+        // Validation du mot de passe
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
+        if (!passwordRegex.test(formData.password)) {
+          toast.error(
+            'Le mot de passe doit contenir au moins 8 caractères, une lettre, un chiffre et un caractère spécial',
+            { duration: 8000 }
+          );
+          setIsLoading(false);
+          return;
+        }
+
         if (formData.password !== formData.confirmPassword) {
           toast.error('Les mots de passe ne correspondent pas', { duration: 5000 });
           setIsLoading(false);

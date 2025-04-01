@@ -1,5 +1,6 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { type User } from '@supabase/supabase-js';
+import { AuthOptions } from 'next-auth';
 
 export interface BaseUser extends User {
   role?: string;
@@ -8,6 +9,14 @@ export interface BaseUser extends User {
 }
 
 export const supabase = createClientComponentClient();
+
+export const authOptions: AuthOptions = {
+  providers: [],
+  secret: process.env.NEXTAUTH_SECRET,
+  session: {
+    strategy: 'jwt',
+  },
+};
 
 export async function getUser(): Promise<BaseUser | null> {
   try {

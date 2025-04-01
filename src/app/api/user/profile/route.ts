@@ -43,7 +43,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Utiliser supabaseAdmin pour contourner RLS
+    // D'abord chercher l'utilisateur avec supabaseAdmin
+    // Cette étape est nécessaire pour contourner les restrictions de sécurité de Supabase
+    // et récupérer les données de l'utilisateur avec les informations de la région
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select(`

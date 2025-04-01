@@ -6,6 +6,14 @@ export const REGIONS = {
   AMERIQUE: 'AMERIQUE',
 } as const;
 
+export const REGION_NAMES = {
+  AFRIQUE_NOIRE: 'Afrique Noire',
+  AFRIQUE_BLANCHE: 'Afrique Blanche',
+  EUROPE: 'Europe',
+  ASIE: 'Asie',
+  AMERIQUE: 'Amérique',
+} as const;
+
 export type RegionKey = keyof typeof REGIONS;
 
 export type CountryCode = 

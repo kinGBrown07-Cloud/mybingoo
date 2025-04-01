@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
 import { createAPISupabaseClient } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -43,227 +43,105 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // D'abord chercher l'utilisateur par supabaseId
-    let userDB = await prisma.user.findUnique({
-      where: { 
-        supabaseId: user.id
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        country: true,
-        image: true,
-        points: true,
-        balance: true,
-        currency: true,
-        affiliateCode: true,
-        referralCount: true,
-        referralEarnings: true,
-        region: {
-          select: {
-            costPerPoint: true,
-            pointsPerPlay: true,
-            currency: true
-          }
-        },
-        GameHistory: {
-          select: {
-            id: true,
-            gameId: true,
-            prizeId: true,
-            status: true,
-            createdAt: true,
-            game: {
-              select: {
-                won: true
-              }
-            }
-          },
-          take: 10,
-          orderBy: {
-            createdAt: 'desc'
-          }
-        },
-        transactions: {
-          select: {
-            amount: true,
-            type: true,
-            status: true,
-            createdAt: true,
-          },
-          take: 10,
-          orderBy: {
-            createdAt: 'desc'
-          }
-        },
-      },
-    });
+    // D'abord chercher l'utilisateur dans Supabase
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select(`
+        *,
+        region:regions (
+          costPerPoint,
+          pointsPerPlay,
+          currency
+        ),
+        game_history:game_histories (
+          id,
+          gameId,
+          prizeId,
+          status,
+          createdAt,
+          game:games (
+            won
+          )
+        ),
+        transactions (
+          amount,
+          type,
+          status,
+          createdAt
+        )
+      `)
+      .eq('supabaseId', user.id)
+      .order('game_history.createdAt', { foreignTable: 'game_histories', ascending: false })
+      .order('transactions.createdAt', { foreignTable: 'transactions', ascending: false })
+      .limit(10, { foreignTable: 'game_histories' })
+      .limit(10, { foreignTable: 'transactions' })
+      .single();
 
-    // Si l'utilisateur n'est pas trouvé, essayer de le trouver par email
-    if (!userDB && user.email) {
-      userDB = await prisma.user.findUnique({
-        where: { email: user.email },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          country: true,
-          image: true,
-          points: true,
-          balance: true,
-          currency: true,
-          affiliateCode: true,
-          referralCount: true,
-          referralEarnings: true,
-          region: {
-            select: {
-              costPerPoint: true,
-              pointsPerPlay: true,
-              currency: true
-            }
-          },
-          GameHistory: {
-            select: {
-              id: true,
-              gameId: true,
-              prizeId: true,
-              status: true,
-              createdAt: true,
-              game: {
-                select: {
-                  won: true
-                }
-              }
-            },
-            take: 10,
-            orderBy: {
-              createdAt: 'desc'
-            }
-          },
-          transactions: {
-            select: {
-              amount: true,
-              type: true,
-              status: true,
-              createdAt: true,
-            },
-            take: 10,
-            orderBy: {
-              createdAt: 'desc'
-            }
-          },
-        },
-      });
-
-      // Si trouvé par email, mettre à jour le supabaseId
-      if (userDB) {
-        await prisma.user.update({
-          where: { id: userDB.id },
-          data: { supabaseId: user.id }
-        });
-      }
-    }
-
-    // Si toujours pas trouvé, créer un nouvel utilisateur
-    if (!userDB && user.email) {
-      try {
-        // Récupérer la région par défaut (Europe)
-        const defaultRegion = await prisma.regionModel.findFirst({
-          where: { name: 'EUROPE' }
-        });
-
-        if (!defaultRegion) {
-          throw new Error('Région par défaut non trouvée');
-        }
-
-        userDB = await prisma.user.create({
-          data: {
-            email: user.email,
-            supabaseId: user.id,
-            name: user.user_metadata?.name || user.email.split('@')[0],
-            password: '', // Mot de passe non nécessaire avec Supabase auth
-            regionId: defaultRegion.id,
-            currency: defaultRegion.currency,
-          },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            country: true,
-            image: true,
-            points: true,
-            balance: true,
-            currency: true,
-            affiliateCode: true,
-            referralCount: true,
-            referralEarnings: true,
-            region: {
-              select: {
-                costPerPoint: true,
-                pointsPerPlay: true,
-                currency: true
-              }
-            },
-            GameHistory: {
-              select: {
-                id: true,
-                gameId: true,
-                prizeId: true,
-                status: true,
-                createdAt: true,
-                game: {
-                  select: {
-                    won: true
-                  }
-                }
-              },
-              take: 10,
-              orderBy: {
-                createdAt: 'desc'
-              }
-            },
-            transactions: {
-              select: {
-                amount: true,
-                type: true,
-                status: true,
-                createdAt: true,
-              },
-              take: 10,
-              orderBy: {
-                createdAt: 'desc'
-              }
-            },
-          },
-        });
-      } catch (createError) {
-        console.error('Erreur lors de la création de l\'utilisateur:', createError);
-        return NextResponse.json(
-          { error: 'Erreur lors de la création du profil' },
-          { status: 500 }
-        );
-      }
-    }
-
-    if (!userDB) {
+    if (userError) {
+      console.error('Erreur de récupération des données utilisateur:', userError);
       return NextResponse.json(
-        { error: 'Utilisateur non trouvé' },
-        { status: 404 }
+        { error: 'Erreur de récupération des données utilisateur' },
+        { status: 500 }
       );
     }
 
+    // Si l'utilisateur n'existe pas dans Supabase, le créer
+    if (!userData) {
+      // Récupérer la région par défaut (Europe)
+      const { data: defaultRegion } = await supabase
+        .from('regions')
+        .select('*')
+        .eq('name', 'EUROPE')
+        .single();
+
+      if (!defaultRegion) {
+        throw new Error('Région par défaut non trouvée');
+      }
+
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert({
+          supabaseId: user.id,
+          email: user.email,
+          name: user.user_metadata?.name || user.email?.split('@')[0],
+          phone: user.user_metadata?.phone,
+          country: user.user_metadata?.country,
+          regionId: defaultRegion.id,
+          currency: defaultRegion.currency,
+          role: user.user_metadata?.role || 'USER',
+          emailVerified: user.email_confirmed_at ? true : false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        .select(`
+          *,
+          region:regions (
+            costPerPoint,
+            pointsPerPlay,
+            currency
+          )
+        `)
+        .single();
+
+      if (createError) {
+        console.error('Erreur de création utilisateur:', createError);
+        return NextResponse.json(
+          { error: 'Erreur de création utilisateur' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(newUser);
+    }
+
     // Calculer le coût par partie
-    const costPerPlay = userDB.region 
-      ? userDB.region.costPerPoint * userDB.region.pointsPerPlay
+    const costPerPlay = userData.region 
+      ? userData.region.costPerPoint * userData.region.pointsPerPlay
       : 0;
 
     // Ajouter le coût par partie à la réponse
     const response = {
-      ...userDB,
+      ...userData,
       costPerPlay
     };
 
@@ -318,16 +196,32 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Mise à jour des métadonnées Supabase Auth
+    const { error: authError } = await supabase.auth.updateUser({
+      data: {
+        name: name.trim(),
+        phone: phone?.trim(),
+        country,
+      }
+    });
+
+    if (authError) {
+      console.error('Erreur de mise à jour des métadonnées:', authError);
+      return NextResponse.json(
+        { error: 'Erreur de mise à jour des métadonnées' },
+        { status: 500 }
+      );
+    }
+
     let imageUrl = undefined;
     if (imageFile) {
       try {
-        // S'assurer que le bucket existe avec les bonnes politiques
         await ensureAvatarBucket();
 
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
 
-        // Supprimer les anciennes images de l'utilisateur
+        // Supprimer les anciennes images
         const { data: files } = await supabase.storage
           .from(AVATAR_BUCKET)
           .list();
@@ -344,7 +238,7 @@ export async function PUT(request: NextRequest) {
           }
         }
 
-        // Upload de la nouvelle image
+        // Upload nouvelle image
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from(AVATAR_BUCKET)
           .upload(fileName, imageFile, {
@@ -368,69 +262,67 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const userDB = await prisma.user.update({
-      where: { supabaseId: user.id },
-      data: {
+    // Mise à jour utilisateur avec toutes les relations
+    const { data: updatedUser, error: updateError } = await supabase
+      .from('users')
+      .update({
         name: name.trim(),
         phone: phone?.trim(),
         country,
         ...(imageUrl && { image: imageUrl }),
-        updatedAt: new Date(),
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        country: true,
-        image: true,
-        points: true,
-        balance: true,
-        currency: true,
-        affiliateCode: true,
-        referralCount: true,
-        referralEarnings: true,
-        region: {
-          select: {
-            costPerPoint: true,
-            pointsPerPlay: true,
-            currency: true
-          }
-        },
-        GameHistory: {
-          select: {
-            id: true,
-            gameId: true,
-            prizeId: true,
-            status: true,
-            createdAt: true,
-            game: {
-              select: {
-                won: true
-              }
-            }
-          },
-          take: 10,
-          orderBy: {
-            createdAt: 'desc'
-          }
-        },
-        transactions: {
-          select: {
-            amount: true,
-            type: true,
-            status: true,
-            createdAt: true,
-          },
-          take: 10,
-          orderBy: {
-            createdAt: 'desc'
-          }
-        }
-      }
-    });
+        updatedAt: new Date().toISOString(),
+      })
+      .eq('supabaseId', user.id)
+      .select(`
+        *,
+        region:regions (
+          costPerPoint,
+          pointsPerPlay,
+          currency
+        ),
+        game_history:game_histories (
+          id,
+          gameId,
+          prizeId,
+          status,
+          createdAt,
+          game:games (
+            won
+          )
+        ),
+        transactions (
+          amount,
+          type,
+          status,
+          createdAt
+        )
+      `)
+      .order('game_history.createdAt', { foreignTable: 'game_histories', ascending: false })
+      .order('transactions.createdAt', { foreignTable: 'transactions', ascending: false })
+      .limit(10, { foreignTable: 'game_histories' })
+      .limit(10, { foreignTable: 'transactions' })
+      .single();
 
-    return NextResponse.json(userDB);
+    if (updateError) {
+      console.error('Erreur de mise à jour utilisateur:', updateError);
+      return NextResponse.json(
+        { error: 'Erreur de mise à jour utilisateur' },
+        { status: 500 }
+      );
+    }
+
+    // Calculer le coût par partie
+    const costPerPlay = updatedUser.region 
+      ? updatedUser.region.costPerPoint * updatedUser.region.pointsPerPlay
+      : 0;
+
+    // Ajouter le coût par partie à la réponse
+    const response = {
+      ...updatedUser,
+      costPerPlay
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Error updating user:', error);
     return NextResponse.json(

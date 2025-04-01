@@ -4,7 +4,6 @@ import { Toaster } from "react-hot-toast";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SupabaseProvider from "@/providers/SupabaseProvider";
-import { SessionProvider } from '@/providers/SessionProvider';
 import LoadingScreen from '@/components/LoadingScreen';
 import { Suspense } from 'react';
 
@@ -24,16 +23,14 @@ export default function RootLayout({
     <html lang="fr">
       <body className={inter.className}>
         <SupabaseProvider>
-          <SessionProvider>
-            <Navbar />
-            <main>
-              <Toaster position="top-center" />
-              <Suspense fallback={<LoadingScreen />}>
-                {children}
-              </Suspense>
-            </main>
-            <Footer />
-          </SessionProvider>
+          <Navbar />
+          <main>
+            <Toaster position="top-center" />
+            <Suspense fallback={<LoadingScreen />}>
+              {children}
+            </Suspense>
+          </main>
+          <Footer />
         </SupabaseProvider>
       </body>
     </html>

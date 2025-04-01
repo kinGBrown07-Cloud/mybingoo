@@ -47,6 +47,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       if (mode === 'register') {
         if (formData.password !== formData.confirmPassword) {
           toast.error('Les mots de passe ne correspondent pas');
+          setIsLoading(false);
           return;
         }
 
@@ -67,7 +68,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
           },
         });
 
-        if (authError) throw authError;
+        if (authError) {
+          console.error('Erreur d\'inscription:', authError);
+          toast.error(authError.message === 'User already registered' 
+            ? 'Cet email est déjà enregistré'
+            : 'Erreur lors de l\'inscription');
+          setIsLoading(false);
+          return;
+        }
 
         if (authData) {
           toast.success('Un email de confirmation vous a été envoyé. Veuillez vérifier votre boîte de réception.');
@@ -80,7 +88,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
         });
 
         if (authError) {
-          if (authError.message === 'Email not confirmed') {
+          console.error('Erreur de connexion:', authError);
+          if (authError.message === 'Invalid login credentials') {
+            toast.error('Email ou mot de passe incorrect');
+          } else if (authError.message === 'Email not confirmed') {
             toast.error('Votre email n\'a pas été confirmé. Veuillez vérifier votre boîte de réception.');
             
             // Renvoyer l'email de confirmation
@@ -88,24 +99,39 @@ export default function AuthForm({ mode }: AuthFormProps) {
               type: 'signup',
               email: formData.email,
             });
-            
-            router.push('/auth/verify-request');
-            return;
+          } else {
+            toast.error('Erreur lors de la connexion');
           }
-          throw authError;
+          setIsLoading(false);
+          return;
         }
 
-        if (authData.session) {
-          toast.success('Connexion réussie !');
-          
-          // Utiliser le router Next.js pour la navigation
-          router.refresh(); // Rafraîchir les données côté serveur
-          router.push('/dashboard');
+        if (authData.user) {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('role')
+            .eq('supabaseId', authData.user.id)
+            .single();
+
+          if (userError) {
+            console.error('Erreur lors de la récupération du rôle:', userError);
+            toast.error('Erreur lors de la récupération de vos données');
+            setIsLoading(false);
+            return;
+          }
+
+          toast.success('Connexion réussie');
+          if (userData?.role === 'ADMIN') {
+            router.push('/admin/dashboard');
+          } else {
+            router.push('/dashboard');
+          }
+          router.refresh();
         }
       }
-    } catch (error: any) {
-      console.error('Erreur:', error);
-      toast.error(error.message || 'Une erreur est survenue');
+    } catch (error) {
+      console.error('Erreur inattendue:', error);
+      toast.error('Une erreur inattendue s\'est produite');
     } finally {
       setIsLoading(false);
     }
@@ -133,246 +159,257 @@ export default function AuthForm({ mode }: AuthFormProps) {
   return (
     <div className="max-w-md mx-auto">
       <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-        <div className="rounded-md shadow-sm space-y-6">
-          {mode === 'register' && (
-            <>
-              {/* Section Informations Personnelles */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">Informations Personnelles</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="relative">
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                      Nom complet
-                    </label>
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
-                      <FontAwesomeIcon icon={faUser} className="text-gray-400" />
-                    </div>
-                    <input
-                      id="name"
-                      name="name"
-                      type="text"
-                      required
-                      className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                      placeholder="Nom complet"
-                      value={formData.name}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="relative">
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                      Téléphone
-                    </label>
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
-                      <FontAwesomeIcon icon={faPhone} className="text-gray-400" />
-                    </div>
-                    <input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      required
-                      className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                      placeholder="Numéro de téléphone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="relative">
-                    <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-                      Pays
-                    </label>
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
-                      <FontAwesomeIcon icon={faGlobe} className="text-gray-400" />
-                    </div>
-                    <input
-                      id="country"
-                      name="country"
-                      type="text"
-                      required
-                      className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                      placeholder="Pays"
-                      value={formData.country}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="relative">
-                    <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
-                      Devise
-                    </label>
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
-                      <FontAwesomeIcon icon={faCoins} className="text-gray-400" />
-                    </div>
-                    <select
-                      id="currency"
-                      name="currency"
-                      required
-                      className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                      value={formData.currency}
-                      onChange={handleChange}
-                    >
-                      <option value="XOF">XOF (FCFA)</option>
-                      <option value="EUR">EUR (€)</option>
-                      <option value="USD">USD ($)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">Informations de Compte</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="relative">
-                    <label htmlFor="costPerPlay" className="block text-sm font-medium text-gray-700 mb-1">
-                      Coût par partie (points)
-                    </label>
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
-                      <FontAwesomeIcon icon={faCoins} className="text-gray-400" />
-                    </div>
-                    <input
-                      id="costPerPlay"
-                      name="costPerPlay"
-                      type="number"
-                      min="300"
-                      required
-                      className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                      placeholder="300"
-                      value={formData.costPerPlay}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="relative">
-                    <label htmlFor="affiliateCode" className="block text-sm font-medium text-gray-700 mb-1">
-                      Code d'affiliation
-                    </label>
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
-                      <FontAwesomeIcon icon={faUser} className="text-gray-400" />
-                    </div>
-                    <input
-                      id="affiliateCode"
-                      name="affiliateCode"
-                      type="text"
-                      className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                      placeholder="Code d'affiliation (optionnel)"
-                      value={formData.affiliateCode}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-
+        {mode === 'register' && (
+          <>
+            {/* Section Informations Personnelles */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">Informations Personnelles</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative">
-                  <label htmlFor="referredBy" className="block text-sm font-medium text-gray-700 mb-1">
-                    Code de parrainage
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                    Nom complet
                   </label>
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
                     <FontAwesomeIcon icon={faUser} className="text-gray-400" />
                   </div>
                   <input
-                    id="referredBy"
-                    name="referredBy"
+                    id="name"
+                    name="name"
                     type="text"
+                    required
                     className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                    placeholder="Code de parrainage (optionnel)"
-                    value={formData.referredBy}
+                    placeholder="Nom complet"
+                    value={formData.name}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="relative">
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                    Téléphone
+                  </label>
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
+                    <FontAwesomeIcon icon={faPhone} className="text-gray-400" />
+                  </div>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    required
+                    className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+                    placeholder="Numéro de téléphone"
+                    value={formData.phone}
                     onChange={handleChange}
                   />
                 </div>
               </div>
-            </>
-          )}
 
-          {/* Section Compte */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">{mode === 'register' ? 'Informations de Compte' : 'Connexion'}</h3>
-            <div className="relative">
-              <label htmlFor="email" className="block text-sm font-medium text-orange-700">
-                Adresse email
-              </label>
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
-                <FontAwesomeIcon icon={faEnvelope} className="text-orange-500" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="relative">
+                  <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
+                    Pays
+                  </label>
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
+                    <FontAwesomeIcon icon={faGlobe} className="text-gray-400" />
+                  </div>
+                  <select
+                    id="country"
+                    name="country"
+                    required
+                    className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+                    value={formData.country}
+                    onChange={handleChange}
+                  >
+                    <option value="">Sélectionnez votre pays</option>
+                    <option value="FR">France</option>
+                    <option value="CI">Côte d'Ivoire</option>
+                    <option value="SN">Sénégal</option>
+                    <option value="CM">Cameroun</option>
+                    <option value="BF">Burkina Faso</option>
+                    <option value="ML">Mali</option>
+                    <option value="GN">Guinée</option>
+                    <option value="BJ">Bénin</option>
+                    <option value="TG">Togo</option>
+                    <option value="NE">Niger</option>
+                    <option value="MA">Maroc</option>
+                    <option value="DZ">Algérie</option>
+                    <option value="TN">Tunisie</option>
+                  </select>
+                </div>
+
+                <div className="relative">
+                  <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
+                    Devise
+                  </label>
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
+                    <FontAwesomeIcon icon={faCoins} className="text-gray-400" />
+                  </div>
+                  <select
+                    id="currency"
+                    name="currency"
+                    required
+                    className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+                    value={formData.currency}
+                    onChange={handleChange}
+                  >
+                    <option value="XOF">XOF (FCFA)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="USD">USD ($)</option>
+                  </select>
+                </div>
               </div>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="block w-full pl-10 pr-3 py-2 border border-orange-300 rounded-md text-orange-900 placeholder-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
-                placeholder="Adresse email"
-                value={formData.email}
-                onChange={handleChange}
-              />
             </div>
 
-            <div className="flex items-center justify-between">
-              <label htmlFor="password" className="block text-sm font-medium text-orange-700">
-                Mot de passe
-              </label>
-              {mode === 'login' && (
-                <a href="/auth/forgot-password" className="text-sm font-medium text-orange-600 hover:text-orange-700">
-                  Mot de passe oublié ?
-                </a>
-              )}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">Informations de Compte</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="relative">
+                  <label htmlFor="costPerPlay" className="block text-sm font-medium text-gray-700 mb-1">
+                    Coût par partie (points)
+                  </label>
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
+                    <FontAwesomeIcon icon={faCoins} className="text-gray-400" />
+                  </div>
+                  <input
+                    id="costPerPlay"
+                    name="costPerPlay"
+                    type="number"
+                    min="300"
+                    required
+                    className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+                    placeholder="300"
+                    value={formData.costPerPlay}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="relative">
+                  <label htmlFor="affiliateCode" className="block text-sm font-medium text-gray-700 mb-1">
+                    Code d'affiliation
+                  </label>
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
+                    <FontAwesomeIcon icon={faUser} className="text-gray-400" />
+                  </div>
+                  <input
+                    id="affiliateCode"
+                    name="affiliateCode"
+                    type="text"
+                    className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+                    placeholder="Code d'affiliation (optionnel)"
+                    value={formData.affiliateCode}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+
+              <div className="relative">
+                <label htmlFor="referredBy" className="block text-sm font-medium text-gray-700 mb-1">
+                  Code de parrainage
+                </label>
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
+                  <FontAwesomeIcon icon={faUser} className="text-gray-400" />
+                </div>
+                <input
+                  id="referredBy"
+                  name="referredBy"
+                  type="text"
+                  className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+                  placeholder="Code de parrainage (optionnel)"
+                  value={formData.referredBy}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
+          </>
+        )}
+
+        {/* Section Compte */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium text-gray-900">{mode === 'register' ? 'Informations de Compte' : 'Connexion'}</h3>
+          <div className="relative">
+            <label htmlFor="email" className="block text-sm font-medium text-orange-700">
+              Adresse email
+            </label>
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
+              <FontAwesomeIcon icon={faEnvelope} className="text-orange-500" />
+            </div>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              className="block w-full pl-10 pr-3 py-2 border border-orange-300 rounded-md text-orange-900 placeholder-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
+              placeholder="Adresse email"
+              value={formData.email}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <label htmlFor="password" className="block text-sm font-medium text-orange-700">
+              Mot de passe
+            </label>
+            {mode === 'login' && (
+              <a href="/auth/forgot-password" className="text-sm font-medium text-orange-600 hover:text-orange-700">
+                Mot de passe oublié ?
+              </a>
+            )}
+          </div>
+          <div className="mt-1 relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FontAwesomeIcon icon={faLock} className="text-orange-500" />
+            </div>
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              required
+              className="block w-full pl-10 pr-10 py-2 border border-orange-300 rounded-md text-orange-900 placeholder-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
+              placeholder="Votre mot de passe"
+              value={formData.password}
+              onChange={handleChange}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-orange-500 hover:text-orange-600"
+            >
+              <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+            </button>
+          </div>
+
+          {mode === 'register' && (
+            <div className="flex items-center justify-between">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-orange-700">
+                Confirmer le mot de passe
+              </label>
+            </div>
+          )}
+          {mode === 'register' && (
             <div className="mt-1 relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <FontAwesomeIcon icon={faLock} className="text-orange-500" />
               </div>
               <input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
                 required
                 className="block w-full pl-10 pr-10 py-2 border border-orange-300 rounded-md text-orange-900 placeholder-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
-                placeholder="Votre mot de passe"
-                value={formData.password}
+                placeholder="Confirmer le mot de passe"
+                value={formData.confirmPassword}
                 onChange={handleChange}
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-orange-500 hover:text-orange-600"
               >
-                <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+                <FontAwesomeIcon icon={showConfirmPassword ? faEyeSlash : faEye} />
               </button>
             </div>
-
-            {mode === 'register' && (
-              <div className="flex items-center justify-between">
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-orange-700">
-                  Confirmer le mot de passe
-                </label>
-              </div>
-            )}
-            {mode === 'register' && (
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FontAwesomeIcon icon={faLock} className="text-orange-500" />
-                </div>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  required
-                  className="block w-full pl-10 pr-10 py-2 border border-orange-300 rounded-md text-orange-900 placeholder-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
-                  placeholder="Confirmer le mot de passe"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-orange-500 hover:text-orange-600"
-                >
-                  <FontAwesomeIcon icon={showConfirmPassword ? faEyeSlash : faEye} />
-                </button>
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
         <div>

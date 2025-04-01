@@ -4,15 +4,18 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { type BaseUser } from '@/lib/auth';
+import toast from 'react-hot-toast';
 
 interface SupabaseContext {
   user: BaseUser | null;
   signOut: () => Promise<void>;
+  loading: boolean;
 }
 
 const Context = createContext<SupabaseContext>({
   user: null,
   signOut: async () => {},
+  loading: true,
 });
 
 export default function SupabaseProvider({
@@ -23,25 +26,35 @@ export default function SupabaseProvider({
   const router = useRouter();
   const supabase = createClientComponentClient();
   const [user, setUser] = useState<BaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const getInitialUser = async () => {
-      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-      if (supabaseUser) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('role, points, regionId')
-          .eq('supabaseId', supabaseUser.id)
-          .single();
+      try {
+        const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+        if (supabaseUser) {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('role, points, regionId')
+            .eq('supabaseId', supabaseUser.id)
+            .single();
 
-        console.log('Initial user data:', userData); // Pour le débogage
+          if (userError) {
+            console.error('Error fetching user data:', userError);
+            return;
+          }
 
-        setUser({
-          ...supabaseUser,
-          role: (userData?.role || 'USER').toUpperCase(),
-          points: userData?.points || 0,
-          region: userData?.regionId
-        });
+          setUser({
+            ...supabaseUser,
+            role: (userData?.role || 'USER').toUpperCase(),
+            points: userData?.points || 0,
+            region: userData?.regionId
+          });
+        }
+      } catch (error) {
+        console.error('Error in getInitialUser:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -49,13 +62,16 @@ export default function SupabaseProvider({
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        const { data: userData } = await supabase
+        const { data: userData, error: userError } = await supabase
           .from('users')
           .select('role, points, regionId')
           .eq('supabaseId', session.user.id)
           .single();
 
-        console.log('Session user data:', userData); // Pour le débogage
+        if (userError) {
+          console.error('Error fetching user data on auth change:', userError);
+          return;
+        }
 
         setUser({
           ...session.user,
@@ -63,8 +79,10 @@ export default function SupabaseProvider({
           points: userData?.points || 0,
           region: userData?.regionId
         });
+        router.refresh();
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
+        router.refresh();
         router.push('/auth/login');
       }
     });
@@ -72,17 +90,24 @@ export default function SupabaseProvider({
     return () => {
       subscription.unsubscribe();
     };
-  }, [router, supabase]);
+  }, [supabase, router]);
 
-  const value = {
-    user,
-    signOut: async () => {
+  const signOut = async () => {
+    try {
       await supabase.auth.signOut();
+      setUser(null);
       router.push('/auth/login');
-    },
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error('Erreur lors de la déconnexion');
+    }
   };
 
-  return <Context.Provider value={value}>{children}</Context.Provider>;
+  return (
+    <Context.Provider value={{ user, signOut, loading }}>
+      {children}
+    </Context.Provider>
+  );
 }
 
 export const useSupabase = () => {

@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope, faLock, faEye, faEyeSlash, faUser, faPhone, faGlobe, faCoins } from '@fortawesome/free-solid-svg-icons';
 import { faGoogle, faGithub } from '@fortawesome/free-brands-svg-icons';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { REGION_CONFIG } from '@/config/regions';
 
 interface AuthFormProps {
   mode: 'login' | 'register';
@@ -26,17 +27,36 @@ export default function AuthForm({ mode }: AuthFormProps) {
     confirmPassword: '',
     phone: '',
     country: '',
-    currency: 'XOF',
-    costPerPlay: 300,
+    currency: '',
+    costPerPoint: 0,
     affiliateCode: '',
     referredBy: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    
+    if (name === 'country') {
+      // Trouver la région correspondante au pays
+      const region = Object.entries(REGION_CONFIG).find(([_, config]) => 
+        config.countries.includes(value as any)
+      );
+
+      if (region) {
+        const [_, config] = region;
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          currency: config.currency,
+          costPerPoint: config.costPerPoint,
+        }));
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,7 +81,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               phone: formData.phone,
               country: formData.country,
               currency: formData.currency,
-              costPerPlay: formData.costPerPlay,
+              costPerPoint: formData.costPerPoint,
               affiliateCode: formData.affiliateCode,
               referredBy: formData.referredBy,
             },
@@ -204,24 +224,23 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="relative">
-                  <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-                    Pays
-                  </label>
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
-                    <FontAwesomeIcon icon={faGlobe} className="text-gray-400" />
-                  </div>
-                  <select
-                    id="country"
-                    name="country"
-                    required
-                    className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                    value={formData.country}
-                    onChange={handleChange}
-                  >
-                    <option value="">Sélectionnez votre pays</option>
-                    <option value="FR">France</option>
+              <div className="relative">
+                <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
+                  Pays
+                </label>
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
+                  <FontAwesomeIcon icon={faGlobe} className="text-gray-400" />
+                </div>
+                <select
+                  id="country"
+                  name="country"
+                  required
+                  className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+                  value={formData.country}
+                  onChange={handleChange}
+                >
+                  <option value="">Sélectionnez votre pays</option>
+                  <optgroup label="Afrique Noire">
                     <option value="CI">Côte d'Ivoire</option>
                     <option value="SN">Sénégal</option>
                     <option value="CM">Cameroun</option>
@@ -231,32 +250,42 @@ export default function AuthForm({ mode }: AuthFormProps) {
                     <option value="BJ">Bénin</option>
                     <option value="TG">Togo</option>
                     <option value="NE">Niger</option>
+                    <option value="CG">Congo</option>
+                    <option value="GA">Gabon</option>
+                    <option value="CD">RD Congo</option>
+                  </optgroup>
+                  <optgroup label="Afrique Blanche">
                     <option value="MA">Maroc</option>
                     <option value="DZ">Algérie</option>
                     <option value="TN">Tunisie</option>
-                  </select>
-                </div>
-
-                <div className="relative">
-                  <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
-                    Devise
-                  </label>
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
-                    <FontAwesomeIcon icon={faCoins} className="text-gray-400" />
-                  </div>
-                  <select
-                    id="currency"
-                    name="currency"
-                    required
-                    className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                    value={formData.currency}
-                    onChange={handleChange}
-                  >
-                    <option value="XOF">XOF (FCFA)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="USD">USD ($)</option>
-                  </select>
-                </div>
+                  </optgroup>
+                  <optgroup label="Europe">
+                    <option value="FR">France</option>
+                    <option value="BE">Belgique</option>
+                    <option value="CH">Suisse</option>
+                    <option value="IT">Italie</option>
+                    <option value="DE">Allemagne</option>
+                    <option value="ES">Espagne</option>
+                    <option value="PT">Portugal</option>
+                    <option value="GB">Royaume-Uni</option>
+                  </optgroup>
+                  <optgroup label="Asie">
+                    <option value="CN">Chine</option>
+                    <option value="JP">Japon</option>
+                    <option value="KR">Corée du Sud</option>
+                    <option value="VN">Vietnam</option>
+                    <option value="TH">Thaïlande</option>
+                    <option value="ID">Indonésie</option>
+                    <option value="MY">Malaisie</option>
+                    <option value="SG">Singapour</option>
+                  </optgroup>
+                  <optgroup label="Amérique">
+                    <option value="US">États-Unis</option>
+                    <option value="CA">Canada</option>
+                    <option value="BR">Brésil</option>
+                    <option value="MX">Mexique</option>
+                  </optgroup>
+                </select>
               </div>
             </div>
 
@@ -264,21 +293,21 @@ export default function AuthForm({ mode }: AuthFormProps) {
               <h3 className="text-lg font-medium text-gray-900">Informations de Compte</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative">
-                  <label htmlFor="costPerPlay" className="block text-sm font-medium text-gray-700 mb-1">
-                    Coût par partie (points)
+                  <label htmlFor="costPerPoint" className="block text-sm font-medium text-gray-700 mb-1">
+                    Coût par point (points)
                   </label>
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
                     <FontAwesomeIcon icon={faCoins} className="text-gray-400" />
                   </div>
                   <input
-                    id="costPerPlay"
-                    name="costPerPlay"
+                    id="costPerPoint"
+                    name="costPerPoint"
                     type="number"
                     min="300"
                     required
                     className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
                     placeholder="300"
-                    value={formData.costPerPlay}
+                    value={formData.costPerPoint}
                     onChange={handleChange}
                   />
                 </div>

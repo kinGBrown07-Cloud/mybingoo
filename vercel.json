@@ -7,8 +7,8 @@
   "regions": ["cdg1"],
   "env": {
     "NEXT_PUBLIC_APP_URL": "https://mybingoo.reussirafrique.com",
-    "DATABASE_URL": "postgresql://postgres:47KopMY2HFHdj4Al@db.kuocbfvmlygezbofarog.supabase.co:5432/postgres",
-    "DIRECT_URL": "postgresql://postgres:47KopMY2HFHdj4Al@db.kuocbfvmlygezbofarog.supabase.co:5432/postgres"
+    "DATABASE_URL": "postgresql://postgres:XWjI0ICGQtcu4rIM@db.kuocbfvmlygezbofarog.supabase.co:5432/postgres",
+    "DIRECT_URL": "postgresql://postgres:XWjI0ICGQtcu4rIM@db.kuocbfvmlygezbofarog.supabase.co:5432/postgres"
   },
   "build": {
     "env": {

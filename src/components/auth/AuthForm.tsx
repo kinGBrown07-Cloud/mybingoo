@@ -68,13 +68,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
       if (mode === 'register') {
         // Validation des champs requis
         if (!formData.name || !formData.phone || !formData.country) {
-          toast.error('Veuillez remplir tous les champs obligatoires');
+          toast.error('Veuillez remplir tous les champs obligatoires', { duration: 5000 });
           setIsLoading(false);
           return;
         }
 
         if (formData.password !== formData.confirmPassword) {
-          toast.error('Les mots de passe ne correspondent pas');
+          toast.error('Les mots de passe ne correspondent pas', { duration: 5000 });
           setIsLoading(false);
           return;
         }
@@ -82,7 +82,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         // Validation du format de téléphone
         const phoneRegex = /^\+?[0-9]{8,15}$/;
         if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
-          toast.error('Numéro de téléphone invalide');
+          toast.error('Numéro de téléphone invalide', { duration: 5000 });
           setIsLoading(false);
           return;
         }
@@ -90,7 +90,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         // Validation de l'email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
-          toast.error('Adresse email invalide');
+          toast.error('Adresse email invalide', { duration: 5000 });
           setIsLoading(false);
           return;
         }
@@ -115,18 +115,18 @@ export default function AuthForm({ mode }: AuthFormProps) {
         if (authError) {
           console.error('Erreur d\'inscription:', authError);
           if (authError.message === 'User already registered') {
-            toast.error('Cet email est déjà enregistré');
+            toast.error('Cet email est déjà enregistré', { duration: 5000 });
           } else if (authError.message.includes('password')) {
-            toast.error('Le mot de passe doit contenir au moins 6 caractères');
+            toast.error('Le mot de passe doit contenir au moins 6 caractères', { duration: 5000 });
           } else {
-            toast.error('Erreur lors de l\'inscription');
+            toast.error('Erreur lors de l\'inscription', { duration: 5000 });
           }
           setIsLoading(false);
           return;
         }
 
         if (authData) {
-          toast.success('Un email de confirmation vous a été envoyé. Veuillez vérifier votre boîte de réception.');
+          toast.success('Un email de confirmation vous a été envoyé. Veuillez vérifier votre boîte de réception.', { duration: 8000 });
           router.push('/auth/verify-request');
         }
       } else {
@@ -138,9 +138,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
         if (authError) {
           console.error('Erreur de connexion:', authError);
           if (authError.message === 'Invalid login credentials') {
-            toast.error('Email ou mot de passe incorrect');
+            toast.error('Email ou mot de passe incorrect', { duration: 5000 });
           } else if (authError.message === 'Email not confirmed') {
-            toast.error('Votre email n\'a pas été confirmé. Veuillez vérifier votre boîte de réception.');
+            toast.error('Votre email n\'a pas été confirmé. Veuillez vérifier votre boîte de réception.', { duration: 5000 });
             
             // Renvoyer l'email de confirmation
             await supabase.auth.resend({
@@ -148,7 +148,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               email: formData.email,
             });
           } else {
-            toast.error('Erreur lors de la connexion');
+            toast.error('Erreur lors de la connexion', { duration: 5000 });
           }
           setIsLoading(false);
           return;
@@ -163,12 +163,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
           if (userError) {
             console.error('Erreur lors de la récupération du rôle:', userError);
-            toast.error('Erreur lors de la récupération de vos données');
+            toast.error('Erreur lors de la récupération de vos données', { duration: 5000 });
             setIsLoading(false);
             return;
           }
 
-          toast.success('Connexion réussie');
+          toast.success('Connexion réussie', { duration: 5000 });
           if (userData?.role === 'ADMIN') {
             router.push('/admin/dashboard');
           } else {
@@ -179,7 +179,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       }
     } catch (error) {
       console.error('Erreur inattendue:', error);
-      toast.error('Une erreur inattendue s\'est produite');
+      toast.error('Une erreur inattendue s\'est produite', { duration: 5000 });
     } finally {
       setIsLoading(false);
     }
@@ -198,7 +198,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       if (error) throw error;
     } catch (error: any) {
       console.error('Erreur:', error);
-      toast.error(error.message || 'Une erreur est survenue');
+      toast.error(error.message || 'Une erreur est survenue', { duration: 5000 });
     } finally {
       setIsLoading(false);
     }

@@ -44,11 +44,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
       if (region) {
         const [_, config] = region;
+        const totalCost = config.costPerPoint * config.pointsPerPlay;
         setFormData(prev => ({
           ...prev,
           [name]: value,
           currency: config.currency,
-          costPerPoint: config.costPerPoint,
+          costPerPoint: totalCost,
         }));
       }
     } else {
@@ -294,7 +295,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative">
                   <label htmlFor="costPerPoint" className="block text-sm font-medium text-gray-700 mb-1">
-                    Coût par point (points)
+                    Coût par partie ({formData.currency || 'EUR'})
                   </label>
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
                     <FontAwesomeIcon icon={faCoins} className="text-gray-400" />
@@ -303,12 +304,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
                     id="costPerPoint"
                     name="costPerPoint"
                     type="number"
-                    min="300"
-                    required
-                    className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                    placeholder="300"
+                    readOnly
+                    className="appearance-none rounded-lg relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm bg-gray-50"
                     value={formData.costPerPoint}
-                    onChange={handleChange}
                   />
                 </div>
 

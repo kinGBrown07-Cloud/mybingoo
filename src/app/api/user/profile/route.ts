@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // D'abord chercher l'utilisateur dans Supabase
-    const { data: userData, error: userError } = await supabase
+    // Utiliser supabaseAdmin pour contourner RLS
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select(`
         *,
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     // Si l'utilisateur n'existe pas dans Supabase, le créer
     if (!userData) {
       // Récupérer la région par défaut (Europe)
-      const { data: defaultRegion } = await supabase
+      const { data: defaultRegion } = await supabaseAdmin
         .from('regions')
         .select('*')
         .eq('name', 'EUROPE')
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
         throw new Error('Région par défaut non trouvée');
       }
 
-      const { data: newUser, error: createError } = await supabase
+      const { data: newUser, error: createError } = await supabaseAdmin
         .from('users')
         .insert({
           supabaseId: user.id,
@@ -196,14 +196,17 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Mise à jour des métadonnées Supabase Auth
-    const { error: authError } = await supabase.auth.updateUser({
-      data: {
-        name: name.trim(),
-        phone: phone?.trim(),
-        country,
+    // Mise à jour des métadonnées Supabase Auth avec supabaseAdmin
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+      user.id,
+      {
+        user_metadata: {
+          name: name.trim(),
+          phone: phone?.trim(),
+          country,
+        }
       }
-    });
+    );
 
     if (authError) {
       console.error('Erreur de mise à jour des métadonnées:', authError);
@@ -221,8 +224,8 @@ export async function PUT(request: NextRequest) {
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
 
-        // Supprimer les anciennes images
-        const { data: files } = await supabase.storage
+        // Supprimer les anciennes images avec supabaseAdmin
+        const { data: files } = await supabaseAdmin.storage
           .from(AVATAR_BUCKET)
           .list();
         
@@ -232,14 +235,14 @@ export async function PUT(request: NextRequest) {
           );
 
           if (oldUserFiles.length > 0) {
-            await supabase.storage
+            await supabaseAdmin.storage
               .from(AVATAR_BUCKET)
               .remove(oldUserFiles.map((file: any) => file.name));
           }
         }
 
-        // Upload nouvelle image
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        // Upload nouvelle image avec supabaseAdmin
+        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
           .from(AVATAR_BUCKET)
           .upload(fileName, imageFile, {
             cacheControl: '3600',
@@ -248,7 +251,7 @@ export async function PUT(request: NextRequest) {
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
+        const { data: { publicUrl } } = supabaseAdmin.storage
           .from(AVATAR_BUCKET)
           .getPublicUrl(fileName);
 
@@ -262,8 +265,8 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Mise à jour utilisateur avec toutes les relations
-    const { data: updatedUser, error: updateError } = await supabase
+    // Mise à jour utilisateur avec supabaseAdmin
+    const { data: updatedUser, error: updateError } = await supabaseAdmin
       .from('users')
       .update({
         name: name.trim(),
